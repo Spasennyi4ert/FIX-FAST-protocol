@@ -21,7 +21,7 @@ init([_Id]) ->
   (Err, Val) ->
     io:format("~p ~p~n", [Err, Val])
   end,
-  {ok, Context} = create_context({file, root() ++"/templates.xml"}, [], F),
+  {ok, Context} = create_context({file, root() ++"/spec/templates.xml"}, [], F),
   {ok, #context{} = Context}.
 
 handle_info({udp, _Socket, _Ip, _Port, Bin}, #context{} = Context) ->

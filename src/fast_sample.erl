@@ -8,7 +8,7 @@ root() ->
 decode(_Context, <<>>)->
   ok;
 decode(Context, Binary) ->
-  case erlang_fast:decode(Binary, Context) of
+  case fast:decode(Binary, Context) of
     {ok, {TemplateName, Msg, Rest, _}} ->
       io:format("~p ~p~n", [TemplateName, Msg]),
       decode(Context, Rest);

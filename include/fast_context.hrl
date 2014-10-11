@@ -5,5 +5,7 @@
   template = undef,
   application = <<"any">>,
   dicts,
-  templates
+  templates,
+  buffer,
+  socket
 }).

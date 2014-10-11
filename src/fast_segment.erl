@@ -89,41 +89,4 @@ decode_fields(Data, Context = #context{template = Template = #template{instructi
          {[DecodedField | DecodedFields], Data2, Context2}
    end.
 
-%% =========================================================================================================
-%% encoding
-%% =========================================================================================================
 
-encode(TemplateId, MsgFields, Context) ->
-   try
-      Template = fast_templates:get_by_id(TemplateId, Context#context.templates#templates.tlist),
-      {TidBin, Context1} = encode_template_id(TemplateId, Context#context{pmap = <<>>, template = Template}),
-      {Data, _, Context2 = #context{pmap = PMap}} = encode_fields(MsgFields, Context1),
-      {ok, {<<(encode_pmap(PMap))/bits, TidBin/bits, Data/bits>>, Context2}}
-   catch
-      _:Err ->
-        {error, Err}
-   end.
-
-encode_template_id(Tid, Context = #context{pmap = PMap, dicts = Dicts, options = Options}) ->
-   case proplists:get_bool(force_encode_tid, Options) of
-      true ->
-         {encode_type(uInt32, Tid, false), Context#context{pmap = <<PMap/bits, 1:1>>}};
-      false ->
-         case erlang_fast_dicts:get_value(global, ?common_template_id_key, Dicts) of
-            DictValue when (DictValue == undef) orelse (DictValue =/= Tid) ->
-               Dicts1 = erlang_fast_dicts:put_value(global, ?common_template_id_key, Tid, Dicts),
-               {encode_type(uInt32, Tid, false), Context#context{pmap = <<PMap/bits, 1:1>>, dicts = Dicts1}};
-            Tid ->
-               {<<>>, Context#context{pmap = <<PMap/bits, 0:1>>}}
-         end
-   end.
-
-encode_fields([], Context = #context{template = #template{instructions = []}}) ->
-   {<<>>, [], Context};
-encode_fields(MsgFields, #context{template = #template{instructions = []}})
-  when is_list(MsgFields) andalso length(MsgFields) > 0 ->
-   throw({error, {MsgFields, "not all message fields are encoded"}});
-encode_fields(MsgFields, Context = #context{template = T = #template{instructions = [Instr | Rest]}}) ->
-   {Head, MsgFields1, Context1} = fast_field_encode:encode(MsgFields, Instr, Context),
-   {Tail, MsgFields2, Context2} = encode_fields(MsgFields1, Context1#context{template = T#template{instructions = Rest}}),
-   {<<Head/bitstring, Tail/bitstring>>, MsgFields2, Context2}.

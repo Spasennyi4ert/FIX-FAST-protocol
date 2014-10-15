@@ -26,6 +26,7 @@ root() ->
 	end.
 
 init([]) ->
+        ftrc:start(),
 	
 	Source = "172.27.129.77",
 	Port = "24027",
@@ -78,5 +79,6 @@ handle_info(_Info, State) ->
 	{noreply, State}.
 
 terminate(normal, State) ->
+        ftrc:stop(),
 	{noreply, State}.
 

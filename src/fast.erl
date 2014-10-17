@@ -26,5 +26,3 @@ reset_context(Context = #context{dicts = Dicts}) ->
 decode(Data, Context) ->
    fast_segment:decode(Data, Context).
 
-encode(TemplateId, Msg, Context) ->
-   fast_segment:encode(TemplateId, Msg, Context).

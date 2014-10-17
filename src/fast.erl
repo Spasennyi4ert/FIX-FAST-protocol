@@ -7,7 +7,6 @@
       create_context/3
       ,reset_context/1
       ,decode/2
-      ,encode/3
    ]).
 
 create_context(TemplatesDescr, Options, Logger) ->

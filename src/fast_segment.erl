@@ -6,8 +6,6 @@
       ,decode_template_id/2
       ,decode_pmap/2
       ,decode_fields/2
-      ,encode/3
-      ,encode_fields/2
    ]).
 
 -include("../include/fast_template.hrl").
@@ -20,11 +18,6 @@
       ,decode_type/3
    ]).
 
--import(fast_encode_types,
-   [
-      encode_pmap/1,
-      encode_type/3
-   ]).
 
 %% =========================================================================================================
 %% decoding

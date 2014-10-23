@@ -10,6 +10,7 @@ all() ->
 groups() ->
     [
      {all, [], [
+                fast_server,
                 fast_sample
                ]}
     ].
@@ -26,6 +27,14 @@ fast_sample(Config) ->
     ok = decode1(Config, Context, "d1"),
     ok = decode1(Config, Context, "d2"),
     ok = decode1(Config, Context, "d3"),
+    ok.
+
+fast_server(Config) ->
+    Context = build_context(root()),
+    %% ct:pal("context: ~p", [Context]),
+    ok = decode2(Config, Context, "d1"),
+    ok = decode2(Config, Context, "d2"),
+    ok = decode2(Config, Context, "d3"),
     ok.
 
 build_context(Root) ->
@@ -48,5 +57,13 @@ decode1(Config, Context, File) ->
     %% ct:pal("path: ~p", [Path]),
     {ok, Bin} = file:read_file(Path),
     ok = fast_sample:decode(Context, Bin),
+    ok.
+
+decode2(Config, Context, File) ->
+    Dir = ?config(data_dir, Config),
+    Path = filename:join([Dir, File]),
+    %% ct:pal("path: ~p", [Path]),
+    {ok, Bin} = file:read_file(Path),
+    ok = fast_server:decode(Bin, Context),
     ok.
 

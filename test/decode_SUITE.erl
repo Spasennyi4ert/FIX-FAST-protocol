@@ -64,6 +64,6 @@ decode2(Config, Context, File) ->
     Path = filename:join([Dir, File]),
     %% ct:pal("path: ~p", [Path]),
     {ok, Bin} = file:read_file(Path),
-    ok = fast_server:decode(Bin, Context),
+    fast_server:decode(Bin, Context),
     ok.
 

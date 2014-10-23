@@ -2,6 +2,8 @@
 
 -include_lib("common_test/include/ct.hrl").
 
+-include_lib("fast_context.hrl").
+
 -compile([export_all]).
 
 all() ->
@@ -64,6 +66,6 @@ decode2(Config, Context, File) ->
     Path = filename:join([Dir, File]),
     %% ct:pal("path: ~p", [Path]),
     {ok, Bin} = file:read_file(Path),
-    fast_server:decode(Bin, Context),
+    #context{} = fast_server:decode(Bin, Context),
     ok.
 

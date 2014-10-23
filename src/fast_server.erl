@@ -88,7 +88,7 @@ decode(Bin, Context) ->
 %% I - just a counter for debugging
 decode(<<>>, Context, I) ->
     io:format("moar, ~p~n", [I]),
-    ok;
+    Context;
 decode(Bin, Context, I) ->
     case fast_segment:decode(Bin, Context) of
         {ok, {TemplateName, Msg, Rest, Ctx2}} ->

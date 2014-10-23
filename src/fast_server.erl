@@ -82,3 +82,19 @@ terminate(normal, State) ->
         ftrc:stop(),
 	{noreply, State}.
 
+decode(Bin, Context) ->
+    decode(Bin, Context, 0).
+
+%% I - just a counter for debugging
+decode(<<>>, Context, I) ->
+    io:format("moar, ~p~n", [I]),
+    ok;
+decode(Bin, Context, I) ->
+    case fast_segment:decode(Bin, Context) of
+        {ok, {TemplateName, Msg, Rest, Ctx2}} ->
+            io:format("~p ~p~n", [TemplateName, Msg]),
+            decode(Rest, Ctx2, I + 1);
+        {error, Reason} ->
+            io:format("ERROR: ~p, Bin = ~p ~n", [Reason, Bin]),
+            exit(failed)
+    end.

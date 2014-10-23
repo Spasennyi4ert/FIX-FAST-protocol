@@ -66,15 +66,8 @@ ip_to_binary(Ip) ->
 	list_to_binary(tuple_to_list(Ip)).
 
 handle_info({udp, _Socket, _Ip, _Port, Bin}, #context{} = Context) ->
-	case fast_segment:decode(Bin, Context) of
-		{ok, {TemplateName, Msg, Rest, _}} ->
-			io:format("~p ~p~n", [TemplateName, Msg]),
-			{ok, { _, _, _, Context1}} = fast_segment:decode(Rest, Context),
-			handle_info({udp, _Socket, _Ip, _Port, Rest}, Context1);
-		{error, Reason} ->
-			io:format("ERROR: ~p, Bin = ~p ~n", [Reason, Bin]),
-			exit(failed)
-	end;
+    Context2 = decode(Bin, Context),
+    {noreply, Context2};
 handle_info(_Info, State) ->
 	{noreply, State}.
 

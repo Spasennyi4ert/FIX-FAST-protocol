@@ -4,15 +4,7 @@
 -compile(export_all).
 
 -include("../include/fast_context.hrl").
-
--record(state, {
-	socket,
-	context
-}).
--record(server, {
-	buffer
-}).
-
+-include("../include/fast_server.hrl").
 
 start_link() ->
 	gen_server:start_link(?MODULE, [], []).

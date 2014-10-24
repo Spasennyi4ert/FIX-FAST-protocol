@@ -1,10 +1,11 @@
 FIX-FAST-protocol
 =================
-FIX-FAST-protocol подключения к moex.com. Образец получаемых данных.
+FIX-FAST-protocol подключения к секции срочного рынка moex.com. Образец получаемых данных.
 
 Erlang/OTP 17 [erts-6.2] [source] [64-bit] [smp:8:8] [async-threads:10] [kernel-poll:false]
 
 Eshell V6.2  (abort with ^G)
+
 1> application:start(fast).
 
 ok

@@ -1,0 +1,4 @@
+-record(server, {
+  buffer,
+  socket
+}).

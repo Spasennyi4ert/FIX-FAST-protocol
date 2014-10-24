@@ -1,0 +1,12 @@
+{application, fast,
+ [
+  {description, "fix protocol"},
+  {vsn, "0.0.1"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {mod, { fast_app, []}},
+  {env, [{config, []}]}
+ ]}.

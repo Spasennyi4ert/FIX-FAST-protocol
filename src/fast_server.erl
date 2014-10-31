@@ -40,26 +40,27 @@ init([]) ->
 	{multicast_ttl, 30},
          {raw, 0, 39, Bin}
       ]),
-    ok = gen_udp:controlling_process(Socket, self()),  %% 35
-    F = fun([], _) ->
+    ok = gen_udp:controlling_process(Socket, self()),  
+    {ok, #server{socket = Socket}}.
+
+ip_to_binary(Ip) ->
+	list_to_binary(tuple_to_list(Ip)).
+handle_info({udp, _Socket, _Ip, _Port, <<>>}, _) ->
+	ok;
+handle_info({udp, _Socket, _Ip, _Port, <<_Head:16, Bin/binary>>}, #server{}) ->
+	F = fun([], _) ->
     	ok;
     (Err, Val) ->
     	io:format("~p ~p~n", [Err, Val])
     	end,
-    try
-    	{Dicts, Templates} = fast_xml:parse({file, root() ++ "/spec/templates.xml"}, []),
-	{ok, #context{dicts = Dicts, templates = Templates, logger = F, options = [], socket = Socket}}
-    catch
-	_:Err ->
-		Err
-    end.
-
-ip_to_binary(Ip) ->
-	list_to_binary(tuple_to_list(Ip)).
-
-handle_info({udp, _Socket, _Ip, _Port, Bin}, #context{} = Context) ->
-    Context2 = decode(Bin, Context),
-    {noreply, Context2};
+    	{ok, Context} = fast:create_context({file, root() ++"/spec/templates.xml"}, [], F),
+    	case fast_segment:decode(Bin, Context) of
+    		{ok, {TemplateName, Msg, _Rest, _}} ->
+    			extract_date(TemplateName, Msg),
+    			{noreply, #server{buffer = Bin}};
+    		{error, Reason} ->
+    			io:format("Error: ~p, Bin = ~p ~n", [Reason, Bin]),
+    			exit(failed)
 handle_info(_Info, State) ->
 	{noreply, State}.
 
@@ -67,19 +68,12 @@ terminate(normal, State) ->
         ftrc:stop(),
 	{noreply, State}.
 
-decode(Bin, Context) ->
-    decode(Bin, Context, 0).
+extract_date(TemplateName, Msg) when TemplateName == <<"DefaultIncrementalRefreshMessage">> ->
+	Trage = [Deal || {<<"MDEntries">>, Deal} <- Msg],
+	deeg(Trade);
+extract_date(TemplateName, Msg) ->
+	io:format("~p ~p~n ~n", [TemplateName, Msg]).
 
-%% I - just a counter for debugging
-decode(<<>>, Context, I) ->
-    io:format("moar, ~p~n", [I]),
-    Context;
-decode(Bin, Context, I) ->
-    case fast_segment:decode(Bin, Context) of
-        {ok, {TemplateName, Msg, Rest, Ctx2}} ->
-            io:format("~p ~p~n", [TemplateName, Msg]),
-            decode(Rest, Ctx2, I + 1);
-        {error, Reason} ->
-            io:format("ERROR: ~p, Bin = ~p ~n", [Reason, Bin]),
-            exit(failed)
-    end.
+deeg([Trade]) when is_list(Trade) ->
+	io:format("~p~n ~n", [Trade]),
+	Trade.

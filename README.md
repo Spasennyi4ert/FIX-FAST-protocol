@@ -84,36 +84,122 @@ ok
                                            
                                            {<<"NumberOfOrders">>,232}]]}]
                                            
-<<"Reset">> []
+Erlang/OTP 17 [erts-6.2] [source] [64-bit] [smp:8:8] [async-threads:10] [kernel-poll:false]
 
-<<"DefaultIncrementalRefreshMessage">> [{<<"ApplVerID">>,<<"8">>},
+Eshell V6.2  (abort with ^G)
 
-                                        {<<"MessageType">>,<<"X">>},
-                                        
-                                        {<<"SenderCompID">>,<<"RTS">>},
-                                        
-                                        {<<"MsgSeqNum">>,12575},
-                                        
-                                        {<<"SendingTime">>,20141021063628202},
-                                        
-                                        {<<"MDEntries">>,
-                                        
-                                         [[{<<"MDUpdateAction">>,0},
-                                         
-                                           {<<"MDEntryType">>,<<"v">>},
-                                           
-                                           {<<"SecurityID">>,66490694},
-                                           
-                                           {<<"SecurityIDSource">>,8},
-                                           
-                                           {<<"ExchangeTradingSessionID">>,
-                                           
-                                            4697},
-                                            
-                                           {<<"RptSeq">>,3712},
-                                           
-                                           {<<"MDEntrySize">>,8949},
-                                           
-                                           {<<"MDEntryTime">>,63628190},
-                                           
-                                           {<<"NumberOfOrders">>,230}]]}]
+1> application:start(fast).
+
+ok
+
+2> fast_server:start_link().
+
+{ok,<0.41.0>}
+
+  [[{<<"MDUpdateAction">>,0},
+  
+   {<<"MDEntryType">>,<<"v">>},
+   
+   {<<"SecurityID">>,66489926},
+   
+   {<<"SecurityIDSource">>,8},
+   
+   {<<"ExchangeTradingSessionID">>,4715},
+   
+   {<<"RptSeq">>,31659},
+   
+   {<<"MDEntrySize">>,500},
+   
+   {<<"MDEntryTime">>,111157184},
+   
+   {<<"NumberOfOrders">>,72}],
+   
+  [{<<"MDUpdateAction">>,0},
+  
+   {<<"MDEntryType">>,<<"v">>},
+   
+   {<<"SecurityID">>,67239494},
+   
+   {<<"SecurityIDSource">>,8},
+   
+   {<<"ExchangeTradingSessionID">>,4715},
+   
+   {<<"RptSeq">>,46545},
+   
+   {<<"MDEntrySize">>,2229},
+   
+   {<<"MDEntryTime">>,111157184},
+   
+   {<<"NumberOfOrders">>,136}]]
+ 
+ 
+ [[{<<"MDUpdateAction">>,0},
+ 
+   {<<"MDEntryType">>,<<"B">>},
+   
+   {<<"SecurityID">>,66489926},
+   
+   {<<"SecurityIDSource">>,8},
+   
+   {<<"ExchangeTradingSessionID">>,4715},
+   
+   {<<"RptSeq">>,31660},
+   
+   {<<"MDEntryPx">>,{11128785055,-1}},
+   
+   {<<"MDEntrySize">>,12302},
+   
+   {<<"MDEntryTime">>,111157184}],
+   
+  [{<<"MDUpdateAction">>,0},
+  
+   {<<"MDEntryType">>,<<"C">>},
+   
+   {<<"SecurityID">>,66489926},
+   
+   {<<"SecurityIDSource">>,8},
+   
+   {<<"ExchangeTradingSessionID">>,4715},
+   
+   {<<"RptSeq">>,31661},
+   
+   {<<"MDEntrySize">>,36286},
+   
+   {<<"MDEntryTime">>,111157184}],
+   
+  [{<<"MDUpdateAction">>,0},
+  
+   {<<"MDEntryType">>,<<"w">>},
+   
+   {<<"SecurityID">>,67239494},
+   
+   {<<"SecurityIDSource">>,8},
+   
+   {<<"ExchangeTradingSessionID">>,4715},
+   
+   {<<"RptSeq">>,46546},
+   
+   {<<"MDEntrySize">>,1909},
+   
+   {<<"MDEntryTime">>,111157186},
+   
+   {<<"NumberOfOrders">>,71}],
+   
+  [{<<"MDUpdateAction">>,0},
+  
+   {<<"MDEntryType">>,<<"w">>},
+   
+   {<<"SecurityID">>,67241030},
+   
+   {<<"SecurityIDSource">>,8},
+   
+   {<<"ExchangeTradingSessionID">>,4715},
+   
+   {<<"RptSeq">>,21979},
+   
+   {<<"MDEntrySize">>,153},
+   
+   {<<"MDEntryTime">>,111157191},
+   
+   {<<"NumberOfOrders">>,65}]]
+ 

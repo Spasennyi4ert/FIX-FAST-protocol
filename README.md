@@ -96,110 +96,18 @@ ok
 
 {ok,<0.41.0>}
 
-  [[{<<"MDUpdateAction">>,0},
-  
-   {<<"MDEntryType">>,<<"v">>},
-   
-   {<<"SecurityID">>,66489926},
-   
-   {<<"SecurityIDSource">>,8},
-   
-   {<<"ExchangeTradingSessionID">>,4715},
-   
-   {<<"RptSeq">>,31659},
-   
-   {<<"MDEntrySize">>,500},
-   
-   {<<"MDEntryTime">>,111157184},
-   
-   {<<"NumberOfOrders">>,72}],
-   
-  [{<<"MDUpdateAction">>,0},
-  
-   {<<"MDEntryType">>,<<"v">>},
-   
-   {<<"SecurityID">>,67239494},
-   
-   {<<"SecurityIDSource">>,8},
-   
-   {<<"ExchangeTradingSessionID">>,4715},
-   
-   {<<"RptSeq">>,46545},
-   
-   {<<"MDEntrySize">>,2229},
-   
-   {<<"MDEntryTime">>,111157184},
-   
-   {<<"NumberOfOrders">>,136}]]
+[{10477,1}] 
  
+[{10474,1}] 
  
- [[{<<"MDUpdateAction">>,0},
+[{10477,1}] 
  
-   {<<"MDEntryType">>,<<"B">>},
-   
-   {<<"SecurityID">>,66489926},
-   
-   {<<"SecurityIDSource">>,8},
-   
-   {<<"ExchangeTradingSessionID">>,4715},
-   
-   {<<"RptSeq">>,31660},
-   
-   {<<"MDEntryPx">>,{11128785055,-1}},
-   
-   {<<"MDEntrySize">>,12302},
-   
-   {<<"MDEntryTime">>,111157184}],
-   
-  [{<<"MDUpdateAction">>,0},
-  
-   {<<"MDEntryType">>,<<"C">>},
-   
-   {<<"SecurityID">>,66489926},
-   
-   {<<"SecurityIDSource">>,8},
-   
-   {<<"ExchangeTradingSessionID">>,4715},
-   
-   {<<"RptSeq">>,31661},
-   
-   {<<"MDEntrySize">>,36286},
-   
-   {<<"MDEntryTime">>,111157184}],
-   
-  [{<<"MDUpdateAction">>,0},
-  
-   {<<"MDEntryType">>,<<"w">>},
-   
-   {<<"SecurityID">>,67239494},
-   
-   {<<"SecurityIDSource">>,8},
-   
-   {<<"ExchangeTradingSessionID">>,4715},
-   
-   {<<"RptSeq">>,46546},
-   
-   {<<"MDEntrySize">>,1909},
-   
-   {<<"MDEntryTime">>,111157186},
-   
-   {<<"NumberOfOrders">>,71}],
-   
-  [{<<"MDUpdateAction">>,0},
-  
-   {<<"MDEntryType">>,<<"w">>},
-   
-   {<<"SecurityID">>,67241030},
-   
-   {<<"SecurityIDSource">>,8},
-   
-   {<<"ExchangeTradingSessionID">>,4715},
-   
-   {<<"RptSeq">>,21979},
-   
-   {<<"MDEntrySize">>,153},
-   
-   {<<"MDEntryTime">>,111157191},
-   
-   {<<"NumberOfOrders">>,65}]]
+[{1048,2}] 
  
+[{1048,2}] 
+ 
+[{10473,1}] 
+ 
+[{10476,1}] 
+
+это и есть цена актива, поступающая от сделок

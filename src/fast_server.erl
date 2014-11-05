@@ -74,6 +74,29 @@ extract_date(TemplateName, Msg) when TemplateName == <<"DefaultIncrementalRefres
 extract_date(TemplateName, Msg) ->
 	io:format("~p ~p~n ~n", [TemplateName, Msg]).
 
-deeg([Trade]) when is_list(Trade) ->
-	io:format("~p~n ~n", [Trade]),
-	Trade.
+deeg([[H|T]]) when is_list(H) andalso T == [] ->
+	filter(H);
+deeg([[H|T]]) when is_list(H) ->
+%	io:format(" ~p~n ~n", [Trade]),
+	filter(H),
+	deeg([T]).
+
+filter(L) ->
+	case lists:member({<<"MDUpdateAction">>,0},L) of
+		true ->
+			case lists:member({<<"MDEntryType">>,<<"2">>},L) of
+				true ->
+					case lists:member({<<"SecurityID">>,66489926},L) of
+						true ->
+							%insert(L);
+							io:format("~p ~n ~n", [L]);
+						false ->
+							{ok, nothing}
+					end;
+				false ->
+					{ok, nothing}
+			end;
+		false ->
+			{ok, nothing}
+	end.
+

@@ -88,8 +88,8 @@ filter(L) ->
 				true ->
 					case lists:member({<<"SecurityID">>,66489926},L) of
 						true ->
-							%insert(L);
-							io:format("~p ~n ~n", [L]);
+							Price = insert(L),
+							io:format("~p ~n ~n", [Price]);
 						false ->
 							{ok, nothing}
 					end;
@@ -100,3 +100,5 @@ filter(L) ->
 			{ok, nothing}
 	end.
 
+insert(L) ->
+	[Price || {<<"MDEntryPx">>,Price} <- L].

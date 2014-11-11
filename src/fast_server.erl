@@ -69,8 +69,9 @@ terminate(normal, State) ->
 	{noreply, State}.
 
 extract_date(TemplateName, Msg) when TemplateName == <<"DefaultIncrementalRefreshMessage">> ->
-	Trage = [Deal || {<<"MDEntries">>, Deal} <- Msg],
+	Trade = [Deal || {<<"MDEntries">>, Deal} <- Msg],
 	deeg(Trade);
+%	io:format(" ~p~n ~n", [Trade]);
 extract_date(TemplateName, Msg) ->
 	io:format("~p ~p~n ~n", [TemplateName, Msg]).
 
@@ -88,7 +89,9 @@ filter(L) ->
 				true ->
 					case lists:member({<<"SecurityID">>,66489926},L) of
 						true ->
-							Price = insert(L),
+							Raw_Price = insert(L),%
+							Price = remake(Raw_Price),
+							fast_in:get_data(Price),
 							io:format("~p ~n ~n", [Price]);
 						false ->
 							{ok, nothing}
@@ -102,3 +105,7 @@ filter(L) ->
 
 insert(L) ->
 	[Price || {<<"MDEntryPx">>,Price} <- L].
+
+remake([{Mantissa, Exponent}]) ->
+	Price = Mantissa * math:pow(10,Exponent),
+	Price.

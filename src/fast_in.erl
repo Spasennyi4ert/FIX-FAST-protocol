@@ -8,25 +8,21 @@
 }).
 
 start_link() ->
-	gen_server:start_link(?MODULE, [], []).
+	gen_server:start_link({local,?MODULE},?MODULE, [], []).
+
+stop(Pid) ->
+	gen_server:call(Pid, terminate).
 
 get_data(Number) ->
 	gen_server:cast(?MODULE, {get_data, Number}).
 
 init([]) ->
-	%{ok, #state{store = ets:new(store, [named_table, set, public])}}.
-	{ok, dict:new()}.
-%get_data(Number) ->
-	%ets:new(store, [named_table, set, public]),
-%	io:format("Number: ~p ~n ~n", [Number]).
+	ets:new(store, [named_table, set, public]),
+	{ok, #state{}}.
 
-handle_cast({get_data, Number}, State) ->
-	
-    	NewState = dict:store(store, Number, State),
-	%ets:new(store, [named_table, set, public]),
-	io:format("Number: ~p ~n ~n", [Number]),
-	Response = {ok, Number},
-	{reply,Response,NewState}.
+handle_cast({get_data, Number}, #state{}) ->
+	NewState = #state{store = Number},
+	{noreply,NewState}.
 
 handle_info(_Info, State) ->
 	{noreply, State}.

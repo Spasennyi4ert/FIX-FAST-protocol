@@ -1,32 +1,21 @@
 -module(fast_sup).
-
 -behaviour(supervisor).
 
 %% API
--export([start_link/0]).
+-export([start_link/3]).
 
 %% Supervisor callbacks
 -export([init/1]).
 
-%% Helper macro for declaring children of supervisor
-%%-define(CHILD(I, Type), {I, {I, start_link, []}, permanent, 5000, Type, [I]}).
+start_link(Name, Limit, MFA) ->
+    supervisor:start_link(?MODULE, {Name, Limit, MFA}).
 
-%% ===================================================================
-%% API functions
-%% ===================================================================
 
-start_link() ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
-
-%% ===================================================================
-%% Supervisor callbacks
-%% ===================================================================
-
-init([]) ->
-	{ok, { {simple_one_for_one, 5, 100},
-	[{undefined,
-		{fast_server, start_link, []},
-		temporary,
+init({Name, Limit, MFA}) ->
+    {ok, {{one_for_all, 1, 3600},
+     [{serv,
+       {fast_task_server, start_link, [Name, Limit, self(), MFA]},
+		permanent,
 		5000,
 		worker,
-		[fast_server]}]} }.
+		[fast__task_server]}]} }.

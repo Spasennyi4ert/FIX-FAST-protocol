@@ -8,26 +8,23 @@ FIX-FAST-protocol подключения к секции срочного рын
 
 ok
 
-2> fast_in:start_link().
+2> fast:start_task(server, 2, {fast_server, start_link, []}).
 
-{ok,<0.41.0>}
+{ok,<0.69.0>} 
 
-3> fast_server:start_link().
+3> fast:run(server,[feed_a]). 
 
-{ok,<0.43.0>}
+{ok,<0.73.0>} 
 
-103090.0 
+4> 91290.0 
  
-103060.0 
- 
-103120.0 
- 
-1.032e5 
- 
-103190.0 
- 
-103190.0 
- 
-103120.0 
+application:stop(fast).
 
-это и есть цена актива, поступающая от сделок
+ok 
+
+5> 
+
+=INFO REPORT==== 4-Mar-2015::14:39:46 === 
+    application: fast 
+    exited: stopped 
+    type: temporary

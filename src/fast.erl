@@ -2,12 +2,17 @@
 
 -include("../include/fast_context.hrl").
 
--export
-([
-      create_context/3
-      ,reset_context/1
-      ,decode/2
-   ]).
+-export([start_task/3, stop_task/1, run/2]).
+-export([ create_context/3,reset_context/1,decode/2]).
+
+start_task(Name, Limit, {M,F,A}) ->
+    fast_supersup:start_task(Name, Limit, {M,F,A}).
+
+stop_task(Name) ->
+    fast_supersup:stop(Name).
+
+run(Name, Args) ->
+    fast_task_server:run(Name, Args).
 
 create_context(TemplatesDescr, Options, Logger) ->
    try

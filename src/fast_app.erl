@@ -9,15 +9,10 @@
 %% Application callbacks
 %% ===================================================================
 
-start(_StartType, _startArgs) ->
-%	case file:path_consult("fast.conf", ["."]) of
-%		{ok, Env, _} ->
-%			application:set_env(fast, config, Env);
-%		_ ->
-%			ok
-%	end,
-	{ok, Pid} = fast_sup:start_link(),
-	{ok, Conf} = file:consult("fast.conf"),
+start(normal, _startArgs) ->
+
+	{ok, Pid} = fast_supersup:start_link(),
+	{ok, Conf} = file:consult("fast.config"),
 	[application:set_env(fast, Conn, Data) || {Conn, Data} <- Conf],
 	{ok, Pid}.
 

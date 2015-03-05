@@ -6,8 +6,8 @@
 -include("../include/fast_context.hrl").
 -include("../include/fast_server.hrl").
 
-start_link() ->
-	gen_server:start_link(?MODULE, [], []).
+start_link(Name) ->
+	gen_server:start_link(?MODULE, Name, []).
 
 root() ->
 	case code:lib_dir(fast) of
@@ -17,12 +17,12 @@ root() ->
 				Root_
 	end.
 
-init([]) ->
+init(Name) ->
         ftrc:start(),
-	
-	Source = "172.27.129.77",
-	Port = "24027",
-	Group = "239.192.7.27",
+    {ok, Options} = application:get_env(fast, Name),
+    {source, Source} = lists:keyfind(source, 1, Options),
+    {port, Port} = lists:keyfind(port, 1, Options),
+    {group, Group} = lists:keyfind(group, 1, Options),
 
 	{ok,SourceAddress} = inet:parse_address(Source),
 	{ok,GroupAddress} = inet:parse_address(Group),
@@ -87,7 +87,7 @@ filter(L) ->
 		true ->
 			case lists:member({<<"MDEntryType">>,<<"2">>},L) of
 				true ->
-					case lists:member({<<"SecurityID">>,66489926},L) of
+					case lists:member({<<"SecurityID">>,69672518},L) of
 						true ->
 							Raw_Price = insert(L),%
 							Price = remake(Raw_Price),

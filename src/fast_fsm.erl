@@ -75,7 +75,7 @@ handle_info(_Info, StateName, Data) ->
 
 wait({long, Price}, #state{pid_exec_conn = SendTo, pid_event = PidTo} = State) ->
     io:format("buy at: ~p~n", [Price]),
-    new_order_single(PidTo, SendTo, 1, 'F.RIH5', buy, 1, [{account, 'A80'},{ord_type,2},{price, Price}]),
+    new_order_single(PidTo, SendTo, 1, 'F.RIH5', buy, 1, [{account, Account},{ord_type,2},{price, Price}]),
     {next_state, buy_limit_long, State};
 wait({short, Price}, #state{pid_exec_conn = SendTo, pid_event = PidTo} = State) ->
     io:format("sell at: ~p~n", [Price]),
@@ -188,6 +188,6 @@ handle_sync_event(Event, _From, StateName, State) ->
 connect(PidTo, SendTo) ->
     gen_event:notify(PidTo, {connect, SendTo}).
 
-new_order_single(_PidTo, SendTo, 1, 'F.RIH5', buy, 1, [{account, 'A80'},{ord_type,2},{price, Price}]) ->
-   fast_msg_sender:new_order_single(SendTo, 1, 'F.RIH5', buy, 1, [{account, 'A80'},{ord_type,2},{price, Price}]).
+new_order_single(_PidTo, SendTo, 1, 'F.RIH5', buy, 1, [{account, Account},{ord_type,2},{price, Price}]) ->
+   fast_msg_sender:new_order_single(SendTo, 1, 'F.RIH5', buy, 1, [{account, Account},{ord_type,2},{price, Price}]).
    %  gen_event:notify(PidTo, {new_order_single(SendTo, 1, 'F.RIH5', buy, 1, [{account, 'A80'},{ord_type,2},{price, Price}])}).

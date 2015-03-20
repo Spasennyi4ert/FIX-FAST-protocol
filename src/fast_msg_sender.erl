@@ -13,8 +13,8 @@ handle_event({connect, Pid}, State) ->
 handle_event({new_order_single, Pid, OrderId, Stock, Side, Quantaty, Options}, State) ->
     fast_exec_conn:new_order_single(Pid, OrderId, Stock, Side, Quantaty, Options),
     {ok, State};
-handle_event({order_cancel_request, Pid, Options}, State) ->
-    fast_exec_conn:order_cancel_request(Pid, Options),
+handle_event({cancel_order, Pid, OrderId, CancOrderId, Stock, Side, Quantaty, Options}, State) ->
+    fast_exec_conn:cancel_order(Pid, OrderId, CancOrderId, Stock, Side, Quantaty, Options),
     {ok, State};
 handle_event(_, State) ->
     {ok, State}.

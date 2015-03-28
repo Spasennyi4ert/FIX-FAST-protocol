@@ -8,8 +8,8 @@
 -record(state, {
 	  pid_exec_conn,
 	  pid_event,
-	  count = 121,
-	  order_qty = 120,
+	  count = 91,
+	  order_qty = 90,
 	  price = 0,
 	  order_count = 0
 }).
@@ -132,16 +132,20 @@ orders_book({OrdStatus, Qty, Side}) ->
 		      case Side of
 			  sell when Prev_Side == sell ->
 			      Pos - Qty + Prev_Qty;
-			  buy when Prev_Side == buy ->
-			      Pos + Qty - Prev_Qty
-		      end;
-		  partial when Prev_Status == partial ->
-		      case Side of
-			  sell when Prev_Side =/= sell ->
+			  sell ->
 			      Pos - Qty;
-			  buy when Prev_Side =/= buy ->
+			  buy when Prev_Side == buy ->
+			      Pos + Qty - Prev_Qty;
+			  buy ->
 			      Pos + Qty
 		      end;
+%		  partial when Prev_Status == partial ->
+%		      case Side of
+%			  sell when Prev_Side =/= sell ->
+%			      Pos - Qty;
+%			  buy when Prev_Side =/= buy ->
+%			      Pos + Qty
+%		      end;
 		  partial when Prev_Status =/= partial ->
 		      case Side of
 			  sell ->
@@ -246,9 +250,13 @@ canceled_buying(canceled, #state{pid_exec_conn = SendTo, pid_event = PidTo, coun
 	      _ ->
 		  0
 	  end,
-    OrderQty = ?LIMIT - Pos,
-    gen_event:notify(PidTo, {new_order_single, SendTo, Count, 'F.RIM5', buy, OrderQty, [{account, 'A80'},{ord_type,2},{price, Price}]}),
+    if Pos < ?LIMIT ->
+	    OrderQty = ?LIMIT - Pos,
+	    gen_event:notify(PidTo, {new_order_single,SendTo,Count, 'F.RIM5', buy, OrderQty, [{account, 'A80'},{ord_type,2},{price, Price}]}),
     {next_state, buying, #state{pid_exec_conn = SendTo, pid_event = PidTo, count = Count + 1, order_count = Count, order_qty = OrderQty}};
+       Pos == ?LIMIT ->
+	    {next_state, long, #state{pid_exec_conn = SendTo, pid_event = PidTo, count = Count}}
+    end;
 canceled_buying(_Event, State) ->
     {next_state, canceled_buying, State}.
 
@@ -261,9 +269,14 @@ canceled_selling(canceled, #state{pid_exec_conn = SendTo, pid_event = PidTo, cou
 	      _ ->
 		  0
 	  end,
-    OrderQty = ?LIMIT + Pos,
-    gen_event:notify(PidTo, {new_order_single, SendTo, Count, 'F.RIM5', sell, OrderQty, [{account, 'A80'},{ord_type,2},{price, Price}]}),
+    
+    if Pos > -?LIMIT ->
+	    OrderQty = ?LIMIT + Pos,
+	    gen_event:notify(PidTo,{new_order_single,SendTo,Count,'F.RIM5', sell, OrderQty, [{account, 'A80'},{ord_type,2},{price, Price}]}),
     {next_state, selling, #state{pid_exec_conn = SendTo, pid_event = PidTo, count = Count + 1, order_count = Count, order_qty = OrderQty}};
+       Pos == -?LIMIT ->
+	    {next_state, short, #state{pid_exec_conn = SendTo, pid_event = PidTo, count = Count}}
+    end;
 canceled_selling(_Event, State) ->
     {next_state, canceled_selling, State}.
 
@@ -378,14 +391,26 @@ buying_cash({repeat_up, Price},
 sell_cash({sell, Price}, #state{pid_exec_conn = SendTo, pid_event = PidTo, count = Count}) ->
     ?D({sell_at, Price}),
     gen_event:notify(PidTo, {new_order_single, SendTo, Count, 'F.RIM5', sell, ?LIMIT, [{account, 'A80'},{ord_type,2},{price, Price}]}),
-    {next_state, selling, #state{count = Count + 1, order_count = Count, order_qty = ?LIMIT, price = Price}};
+    {next_state, selling,
+     #state{pid_exec_conn = SendTo,pid_event = PidTo,count = Count + 1,order_count = Count, order_qty = ?LIMIT, price = Price}};
+%sell_cash({repeat_down, Price}, #state{pid_exec_conn = SendTo, pid_event = PidTo, count = Count}) ->
+%    ?D({repeat_down_at, Price}),
+%    gen_event:notify(PidTo, {new_order_single, SendTo, Count, 'F.RIM5', sell, ?LIMIT, [{account, 'A80'},{ord_type,2},{price, Price}]}),
+%    {next_state, selling,
+%     #state{pid_exec_conn = SendTo,pid_event = PidTo,count = Count + 1,order_count = Count, order_qty = ?LIMIT, price = Price}};
 sell_cash(_Event, State) ->
     {next_state, sell_cash, State}.
 
 buy_cash({buy, Price}, #state{pid_exec_conn = SendTo, pid_event = PidTo, count = Count}) ->
     ?D({buy_at, Price}),
     gen_event:notify(PidTo, {new_order_single, SendTo, Count, 'F.RIM5', buy, ?LIMIT, [{account, 'A80'},{ord_type,2},{price, Price}]}),
-    {next_state, buying, #state{count = Count + 1, order_count = Count, order_qty = ?LIMIT, price = Price}};
+    {next_state, buying,
+     #state{pid_exec_conn = SendTo,pid_event = PidTo,count = Count + 1,order_count = Count, order_qty = ?LIMIT, price = Price}};
+%buy_cash({repeat_up, Price}, #state{pid_exec_conn = SendTo, pid_event = PidTo, count = Count}) ->
+%    ?D({repeat_up_at, Price}),
+%    gen_event:notify(PidTo, {cancel_order, SendTo, Count, Order_Count, 'F.RIM5', buy, OrderQty, [{account, 'A80'},{ord_type,2}]}),
+%    {next_state, buying,
+%     #state{pid_exec_conn = SendTo,pid_event = PidTo,count = Count + 1,order_count = Count, order_qty = ?LIMIT, price = Price}};
 buy_cash(_Event, State) ->
     {next_state, buy_cash, State}.
 
@@ -400,7 +425,8 @@ canceled_to_market_buying(canceled, #state{pid_exec_conn = SendTo, pid_event = P
 		  0
 	  end,
     gen_event:notify(PidTo, {new_order_single, SendTo, Count, 'F.RIM5', buy, ?LIMIT - Pos, [{account, 'A80'},{ord_type,2},{price, Price}]}),
-    {next_state, buy_market, #state{count = Count + 1, order_count = Count, order_qty = ?LIMIT - Pos}};
+    {next_state, buy_market,
+     #state{pid_exec_conn = SendTo, pid_event = PidTo, count = Count + 1, order_count = Count, order_qty = ?LIMIT - Pos}};
 canceled_to_market_buying(_Event, State) ->
     {next_state, canceled, State}.
 
@@ -414,13 +440,10 @@ canceled_to_market_selling(canceled, #state{pid_exec_conn = SendTo, pid_event = 
 		  0
 	  end,
     gen_event:notify(PidTo, {new_order_single, SendTo, Count, 'F.RIM5', sell, ?LIMIT + Pos, [{account, 'A80'},{ord_type,2},{price, Price}]}),
-    {next_state, sell_marlet, #state{count = Count + 1, order_count = Count, order_qty = ?LIMIT + Pos}};
+    {next_state, sell_market,
+     #state{pid_exec_conn = SendTo, pid_event = PidTo, count = Count + 1, order_count = Count, order_qty = ?LIMIT + Pos}};
 canceled_to_market_selling(_Event, State) ->
     {next_state, canceled_selling, State}.
-
-
-
-
 
 
 sell_market({market_sell, Price}, #state{pid_exec_conn = SendTo, pid_event = PidTo, count = Count}) ->
@@ -432,7 +455,8 @@ sell_market({market_sell, Price}, #state{pid_exec_conn = SendTo, pid_event = Pid
 		  0
 	  end,
     gen_event:notify(PidTo, {new_order_single, SendTo, Count, 'F.RIM5', sell, Pos, [{account, 'A80'},{ord_type,2},{price, Price}]}),
-    {next_state, sell_cash, #state{count = Count + 1, order_count = Count, order_qty = Pos, price = Price}};
+    {next_state, sell_cash,
+     #state{pid_exec_conn = SendTo, pid_event = PidTo, count = Count + 1, order_count = Count, order_qty = Pos, price = Price}};
 sell_market(_Event, State) ->
     {next_state, sell_market, State}.
 
@@ -445,7 +469,8 @@ buy_market({market_buy, Price}, #state{pid_exec_conn = SendTo, pid_event = PidTo
 		  0
 	  end,
     gen_event:notify(PidTo, {new_order_single, SendTo, Count, 'F.RIM5', buy, Pos, [{account, 'A80'},{ord_type,2},{price, Price}]}),
-    {next_state, buy_cash, #state{count = Count + 1, order_count = Count, order_qty = Pos, price = Price}};
+    {next_state, buy_cash,
+     #state{pid_exec_conn = SendTo, pid_event = PidTo, count = Count + 1, order_count = Count, order_qty = Pos, price = Price}};
 buy_market(_Event, State) ->
     {next_state, buy_market, State}.
 
@@ -462,4 +487,6 @@ handle_sync_event(Event, _From, StateName, State) ->
 
 connect(PidTo, SendTo, From) ->
     gen_event:notify(PidTo, {connect, SendTo, From}).
+
+
 

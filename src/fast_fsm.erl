@@ -119,7 +119,11 @@ orders_book({OrdStatus, Qty, Side}) ->
 			  sell when Prev_Side == sell ->
 			      Pos - Qty + Prev_Qty;
 			  buy when Prev_Side == buy ->
-			      Pos + Qty - Prev_Qty
+			      Pos + Qty - Prev_Qty;
+			  sell ->
+			      Pos - Qty;
+			  buy ->
+			      Pos + Qty
 		      end;
 		  filled ->
 		      case Side of

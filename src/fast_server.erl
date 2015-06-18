@@ -2,8 +2,8 @@
 -behaviour(gen_server).
 
 -compile(export_all).
--include_lib("stdlib/include/ms_transform.hrl").
--include("../include/fast_context.hrl").
+%%-include_lib("stdlib/include/ms_transform.hrl").
+%%-include("../include/fast_context.hrl").
 -include("../include/fast_server.hrl").
 -include("log.hrl").
 

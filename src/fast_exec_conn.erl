@@ -10,9 +10,9 @@
 
 -define(NETWORK_TIMEOUT, 500).
 
--export([start_link/1, connect/2, new_order_single/6, cancel_order/7]).
+-export([start_link/2, connect/2, new_order_single/5, cancel_order/6, out/1]).
 
--export([init/1,  handle_call/3, handle_info/2, terminate/2]).
+-export([init/1,  handle_call/3, handle_cast/2, handle_info/2, code_change/3, terminate/2]).
 
 -record(conn, {socket,
 	       seq = 1,
@@ -23,30 +23,35 @@
 	       sender,
 	       target,
 	       heartbeat,
+	       account,
 	       logon_from,
 	       consumer,
 	       buffer = <<>>,
-	       send_to
+	       send_to,
+	       futures
 }).
 
-start_link(Name) ->
-    gen_server:start_link({local, Name}, ?MODULE, [Name], []).
+start_link(Name, Instrument) ->
+    gen_server:start_link({local, ?MODULE}, ?MODULE, [Name, Instrument], []).
 
 connect(Pid, SendTo) ->
     gen_server:call(Pid, {connect_logon, SendTo}).
 
-new_order_single(Pid, OrderId, Stock, Side, Quantaty, Options) ->
+new_order_single(Pid, OrderId, Side, Quantaty, Options) ->
     NewOrder = [{transact_time, fast:now()}, {order_qty, Quantaty} | Options],
-    ok = gen_server:call(Pid, {msg, new_order_single, OrderId, Side, Stock, NewOrder}),
+    ok = gen_server:call(Pid, {msg, new_order_single, OrderId, Side, NewOrder}),
     {ok, OrderId}.
 
-cancel_order(Pid, OrderId, CancelId, Stock, Side, Quantaty, Options) ->
+cancel_order(Pid, OrderId, CancelId, Side, Quantaty, Options) ->
     OrderCancel = [{orig_cl_ord_id, CancelId}, {transact_time, fast:now()}, {order_qty, Quantaty} | Options],
-    ok = gen_server:call(Pid, {msg, order_cancel_request, OrderId, Side, Stock, OrderCancel}),
+    ok = gen_server:call(Pid, {msg, order_cancel_request, OrderId, Side, OrderCancel}),
     ok.
 
-init([Name]) ->
-    fast:start_task(fast_m, 2, {fast_fsm, start_link, []}),
+out(Pid) ->
+    gen_server:call(Pid, logout).
+
+init([Name, Instrument]) ->
+    fast:start_task(fast_m, {fast_fsm, start_link, []}),
     fast:run(fast_m, [self()]),
     {ok, Options} = application:get_env(fast, Name),
     {host, Host} = lists:keyfind(host, 1, Options),
@@ -55,22 +60,32 @@ init([Name]) ->
     {sender, Sender} = lists:keyfind(sender, 1, Options),
     {target, Target} = lists:keyfind(target, 1, Options),
     Heartbeat = proplists:get_value(heartbeat, Options, 30),
+    {account, Account} = lists:keyfind(account, 1, Options),
     {ok, #conn{host = Host,
 	       port = Port,
 	       password = Password,
 	       sender = Sender,
 	       target = Target,
-	       heartbeat = Heartbeat
+	       heartbeat = Heartbeat,
+	       account = Account,
+	       futures = Instrument
 	      }}.
 
 handle_call({connect_logon, SendTo}, From, #conn{} = Conn) ->
     Connected = #conn{} = do_connect(Conn),
     Logon_sent = send_logon(Connected#conn{send_to = SendTo, logon_from = From}),
     {noreply, Logon_sent, ?NETWORK_TIMEOUT};
-handle_call({msg, MessageType, ClOrdId, Side, Stock, Tail}, {_Owner, _Ref}, #conn{} = Conn) ->
-    Body = fast:stock_to_instrument_block(Stock) ++ [{side, Side}, {cl_ord_id, ClOrdId}|Tail],
+handle_call(logout, From, #conn{} = Conn) ->
+    Connected = #conn{} = do_connect(Conn),
+    Logout = send_logout(Connected#conn{logon_from = From}),
+    {noreply, Logout, ?NETWORK_TIMEOUT};
+handle_call({msg, MessageType, ClOrdId, Side, Tail}, {_Owner, _Ref}, #conn{account = Account, futures = Futures} = Conn) ->
+    Body = fast:stock_to_instrument_block(Futures) ++ [{side, Side}, {cl_ord_id, ClOrdId}, {account, atom_to_binary(Account, latin1)}|Tail],
  %   NewConn = remember_request(MessageType, ClOrdId, Owner, Conn},
     {reply, ok, send(MessageType, Body, Conn)}.
+
+handle_cast(_Msg, State) ->
+    {noreply, State}.
 
 handle_info(heartbeat, #conn{} = Conn) ->
     {noreply, send(heartbeat, [], Conn)};
@@ -99,11 +114,19 @@ send_logon(#conn{password = Password, heartbeat = Heartbeat} = Conn) ->
     timer:send_interval(Heartbeat*1000, heartbeat),
     send(logon, MsgBody, Conn).
 
+send_logout(#conn{password = Password} = Conn) ->
+    MsgBody = [{password, Password}], %++ [{10001,"Y"}],
+
+    send(logout, MsgBody, Conn).
+
 send(MessageType, Body, #conn{seq = Seq, sender = Sender, target = Target, socket = Socket} = Conn) ->
     Bin = fast:pack(MessageType, Body, Seq, Sender, Target),
     Result = gen_tcp:send(Socket, Bin),
     ok = Result,
     Conn#conn{seq = Seq + 1}.
+
+code_change(_OldVsn, State, _Extra) ->
+    {ok, State}.
 
 terminate(_, _) ->
     ok.
@@ -131,20 +154,25 @@ handle_messages([{#logon{},_}|Messages], #conn{logon_from = {Pid, _} = From} = C
     gen_server:reply(From, ok),
     erlang:monitor(process, Pid),
     handle_messages(Messages, Conn#conn{logon_from = undefined, consumer = Pid});
-handle_messages([{#execution_report{ord_status = Status, leaves_qty = LQ, cum_qty = CQ, side = Side}, _}|Messages],
+handle_messages([{#execution_report{ord_status = Status, leaves_qty = LQ, cum_qty = CQ, side = Side}, _Bin}|Messages],
 		#conn{send_to = SendTo} = Conn) ->
-    ?D({execution_report, Status, LQ, CQ, Side}),
+    ?D({execution_report, Status, LQ, CQ, Side, SendTo}),
+%	?D(fast:dump(Bin)),
     case Status of
 	partial ->
 	    fast_fsm:partial(SendTo, CQ),
-	    fast_fsm:orders_book({Status, CQ, Side});
+	    fast_fsm:orders_book({Status, LQ, CQ, Side});
 	filled ->
 	    fast_fsm:filled(SendTo, CQ),
-	    fast_fsm:orders_book({Status, CQ, Side});
+	    fast_fsm:orders_book({Status, LQ, CQ, Side});
 	canceled ->
-	    fast_fsm:canceled(SendTo);
+	    fast_fsm:canceled(SendTo),
+	    fast_fsm:orders_book({Status, LQ, CQ, Side});
 	rejected ->
-	    fast_fsm:orders_book({Status, CQ, Side});
+	    fast_fsm:rejected(SendTo),
+	    fast_fsm:orders_book({Status, LQ, CQ, Side});
+	expired ->
+	    fast_fsm:expired(SendTo);
 	_ ->
 	    ok
     end,

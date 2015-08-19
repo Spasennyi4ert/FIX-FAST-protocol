@@ -76,12 +76,13 @@ handle_call({connect_logon, SendTo}, From, #conn{} = Conn) ->
     %?D (From),
     Connected = #conn{} = do_connect(Conn),
     Logon_sent = send_logon(Connected#conn{send_to = SendTo, logon_from = From}),
-    {noreply, Logon_sent, ?NETWORK_TIMEOUT};
+    {noreply, Logon_sent};%, ?NETWORK_TIMEOUT};
 handle_call(logout, From, #conn{} = Conn) ->
     ?D (From),
-    Connected = #conn{} = do_connect(Conn),
-    Logout = send_logout(Connected#conn{logon_from = From}),
-    {noreply, Logout, ?NETWORK_TIMEOUT};
+%    Connected = #conn{} = do_connect(Conn),
+%    Logout = send_logout(Conn),
+    send_logout(Conn),
+    {noreply, Conn#conn{socket = socket_closed}};%, ?NETWORK_TIMEOUT};
 handle_call({msg, MessageType, ClOrdId, Side, Tail}, {_Owner, _Ref}, #conn{account = Account, futures = Futures} = Conn) ->
     Body = fast:stock_to_instrument_block(Futures) ++ [{side, Side}, {cl_ord_id, ClOrdId}, {account, atom_to_binary(Account, latin1)}|Tail],
  %   NewConn = remember_request(MessageType, ClOrdId, Owner, Conn},
@@ -103,7 +104,9 @@ handle_info({tcp, Socket, Bin}, #conn{buffer = PreBuffer} = Conn) ->
     inet:setopts(Socket, [{active, once}]),
     handle_messages(Messages, NewConn);
 handle_info({Closed, _Socket}, #conn{} = Conn) when Closed == tcp_closed ->
-    {stop, {shutdown, socket_closed}, Conn};
+%    {stop, {shutdown, socket_closed}, Conn};
+%    {stop, normal, Conn};
+    {noreply, Conn#conn{socket = socket_closed}};
 handle_info({'EXIT', _From, Reason}, #conn{} = Conn) ->
     {stop, Reason, Conn}.
 
@@ -113,20 +116,23 @@ do_connect(#conn{host = Host, port = Port} = Conn) ->
 
 send_logon(#conn{password = Password, heartbeat = Heartbeat} = Conn) ->
     MsgBody = [{encrypt_method, 0},{heart_bt_int, Heartbeat},{reset_seq_num_flag, "Y"},{password, Password}] ++ [{10001,"Y"}],
-
     timer:send_interval(Heartbeat*1000, heartbeat),
     send(logon, MsgBody, Conn).
 
 send_logout(#conn{password = Password} = Conn) ->
     MsgBody = [{password, Password}], %++ [{10001,"Y"}],
-
     send(logout, MsgBody, Conn).
 
 send(MessageType, Body, #conn{seq = Seq, sender = Sender, target = Target, socket = Socket} = Conn) ->
-    Bin = fast:pack(MessageType, Body, Seq, Sender, Target),
-    Result = gen_tcp:send(Socket, Bin),
-    ok = Result,
-    Conn#conn{seq = Seq + 1}.
+    case Socket of
+	socket_closed ->
+	    io:format("Socket_closed. ~n");
+	_ ->
+	    Bin = fast:pack(MessageType, Body, Seq, Sender, Target),
+	    Result = gen_tcp:send(Socket, Bin),
+	    ok = Result,
+	    Conn#conn{seq = Seq + 1}
+    end.
 
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
@@ -157,6 +163,10 @@ handle_messages([{#logon{},_}|Messages], #conn{logon_from = {Pid, _} = From} = C
     gen_server:reply(From, ok),
     erlang:monitor(process, Pid),
     handle_messages(Messages, Conn#conn{logon_from = undefined, consumer = Pid});
+handle_messages([{#logout{} = Logout, _Bin}|Messages], #conn{logon_from = {_, _} = From} = Conn) ->
+    ?D(Logout),
+    gen_server:reply(From, ok),
+    handle_messages(Messages, Conn);
 handle_messages([{#execution_report{ord_status = Status, leaves_qty = LQ, cum_qty = CQ, side = Side}, _Bin}|Messages],
 		#conn{send_to = SendTo} = Conn) ->
     ?D({execution_report, Status, LQ, CQ, Side, SendTo}),

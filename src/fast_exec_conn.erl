@@ -76,13 +76,13 @@ handle_call({connect_logon, SendTo}, From, #conn{} = Conn) ->
     %?D (From),
     Connected = #conn{} = do_connect(Conn),
     Logon_sent = send_logon(Connected#conn{send_to = SendTo, logon_from = From}),
-    {noreply, Logon_sent};%, ?NETWORK_TIMEOUT};
+    {noreply, Logon_sent, ?NETWORK_TIMEOUT};
 handle_call(logout, From, #conn{} = Conn) ->
     ?D (From),
 %    Connected = #conn{} = do_connect(Conn),
 %    Logout = send_logout(Conn),
     send_logout(Conn),
-    {noreply, Conn#conn{socket = socket_closed}};%, ?NETWORK_TIMEOUT};
+    {reply, ok, Conn#conn{socket = socket_closed}};%, ?NETWORK_TIMEOUT};
 handle_call({msg, MessageType, ClOrdId, Side, Tail}, {_Owner, _Ref}, #conn{account = Account, futures = Futures} = Conn) ->
     Body = fast:stock_to_instrument_block(Futures) ++ [{side, Side}, {cl_ord_id, ClOrdId}, {account, atom_to_binary(Account, latin1)}|Tail],
  %   NewConn = remember_request(MessageType, ClOrdId, Owner, Conn},
@@ -126,7 +126,7 @@ send_logout(#conn{password = Password} = Conn) ->
 send(MessageType, Body, #conn{seq = Seq, sender = Sender, target = Target, socket = Socket} = Conn) ->
     case Socket of
 	socket_closed ->
-	    io:format("Socket_closed. ~n");
+	    ok;
 	_ ->
 	    Bin = fast:pack(MessageType, Body, Seq, Sender, Target),
 	    Result = gen_tcp:send(Socket, Bin),

@@ -1,5 +1,4 @@
 -module(fast).
-
 -export([start_server/2, stop_server/1, start_dispatcher/0, stop_dispatcher/0]).
 
 start_server(Feed,SecID) ->

@@ -11,8 +11,6 @@
 
 start(normal, _startArgs) ->
 	{ok, Pid} = fix_supersup:start_link(),
-	{ok, Conf} = file:consult("fix.config"),
-	[application:set_env(fix, Conn, Data) || {Conn, Data} <- Conf],
 	{ok, Pid}.
 
 stop(_State) ->

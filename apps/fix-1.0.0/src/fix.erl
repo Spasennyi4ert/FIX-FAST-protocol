@@ -3,9 +3,12 @@
 -include("log.hrl").
 -include("../include/business.hrl").
 
--export([start_conn/2, stop_conn/1, now/0, utc_ms/0, pack/5, encode_value/1, dump/1, decode_bin/1]).
+-export([new_table/1, start_conn/2, stop_conn/1, now/0, utc_ms/0, pack/5, encode_value/1, dump/1, decode_bin/1]).
 -export([stock_to_instrument/1, instrument_to_stock/1, get_stock/1, cfi_code/1, stock_to_instrument_block/1]).
 
+new_table(Name) ->
+    fix_supersup:new_table(Name).
+    
 start_conn(Feed,Item) ->
     fix_supersup:start_conn(Feed,Item).
 

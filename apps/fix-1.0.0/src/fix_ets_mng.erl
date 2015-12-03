@@ -3,7 +3,7 @@
 -export([start_link/1]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, code_change/3, terminate/2]).
 
-%-include("../include/table.hrl").
+-include("log.hrl").
 
 -record(state, {
 	  names,
@@ -11,7 +11,7 @@
 }).
 
 start_link(Name) ->
-    gen_server:start_link({local, Name}, ?MODULE, [Name], []).
+    gen_server:start_link({local, ?MODULE}, ?MODULE, [Name], []).
 
 init([Name]) ->
     process_flag(trap_exit, true),
@@ -21,6 +21,7 @@ init([Name]) ->
 handle_call(_Msg, _From, S) ->
     {reply, {error, undef}, S}.
 
+
 handle_cast({prime, Data}, #state{names = Name} = S) ->
     FEC = whereis(fix_exec_conn),
     link(FEC),
@@ -28,6 +29,7 @@ handle_cast({prime, Data}, #state{names = Name} = S) ->
     ets:insert(TableId, Data),
     ets:setopts(TableId, {heir, self(), Data}),
     ets:give_away(TableId, FEC, Data),
+    fix_exec_conn:connect(FEC),
     {noreply, S#state{table_id = TableId}};
 handle_cast(_Msg, S) ->
     {noreply, S}.

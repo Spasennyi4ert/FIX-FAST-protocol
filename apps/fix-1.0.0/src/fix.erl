@@ -3,17 +3,17 @@
 -include("log.hrl").
 -include("../include/business.hrl").
 
--export([new_table/1, start_conn/2, stop_conn/1, now/0, utc_ms/0, pack/5, encode_value/1, dump/1, decode_bin/1]).
+-export([table/1, conn/2, stop/1, now/0, utc_ms/0, pack/5, encode_value/1, dump/1, decode_bin/1]).
 -export([stock_to_instrument/1, instrument_to_stock/1, get_stock/1, cfi_code/1, stock_to_instrument_block/1]).
 
-new_table(Name) ->
-    fix_supersup:new_table(Name).
-    
-start_conn(Feed,Item) ->
-    fix_supersup:start_conn(Feed,Item).
+table(Name) ->
+    fix_supersup:table(Name).
 
-stop_conn(Feed) ->
-    fix_supersup:stop_conn(Feed).
+conn(Feed,Item) ->
+    fix_supersup:conn(Feed,Item).
+
+stop(Name) ->
+    fix_supersup:stop(Name).
 
 -spec now() -> string().
 now() ->
@@ -48,7 +48,7 @@ MessageType =/= undefined, is_list(Body), is_integer(SeqNum), Sender =/= undefin
   Body2 = iolist_to_binary([encode([{begin_string, "FIX.4.4"}, {body_length, BodyLength}]), Body1]),
   CheckSum = checksum(Body2),
   Body3 = [Body2, encode([{check_sum, CheckSum}])],
-  %?D({out,Header2, dump(Body3)}),
+  %?D({out,Header2}),
 	%io:format("~p ~n", [Header2]),
   Body3.
 

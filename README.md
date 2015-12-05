@@ -10,7 +10,7 @@ Eshell V7.0  (abort with ^G)
 
 ok
 
-2> application:start(ars), application:start(fast).
+2> application:start(ars), application:start(fix).
 
 ok
 

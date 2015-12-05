@@ -1,54 +1,42 @@
 Робот для торговли на MOEX в секции FORTS, с подключением по FAST и FIX протоколам.
 Пробный запуск следующий:
-~/ars/apps/fast-1.0.0$ erl -pa ebin/
+~/ars/apps$ erl -env ERL_LIBS "."
 
 Erlang/OTP 18 [erts-7.0] [source] [64-bit] [smp:8:8] [async-threads:10] [kernel-poll:false]
 
 Eshell V7.0  (abort with ^G)
 
-1> application:start(fast).
+1> application:load(fast).
 
 ok
 
-2> SecID = 77205831.
+2> application:start(ars), application:start(fast).
 
-77205831
+ok
 
-3> fast:start_server(feed_a, SecID).
+3> ars:start_service(fsm, {ars_fsm, start_link, []}).
 
-{ok,<0.42.0>}
+{ok,<0.50.0>}
 
-4> List : 1135 [64,44,1135,20150824044824300,<<>>]
+4> ars:start_service(mng, {ars_mng, start_link, []}).
 
-List : 1136 [64,44,1136,20150824044854682,<<>>]
+{ok,<0.54.0>}
 
-List : 1137 [64,44,1137,20150824044925312,<<>>]
+5> ars:run_task(fsm, []), ars:run_task(mng, [book]).
 
-List : 1138 [64,44,1138,20150824044955694,<<>>]
+MGR(<0.64.0>) -> FSM(<0.58.0>) getting TableId: 20498
 
-List : 1139 [64,44,1139,20150824045026324,<<>>]
+{ok,<0.64.0>}
 
-fast:stop_server(feed_a). 
+6> Item = 'F.RIZ5'. 
 
-ok 
+'F.RIZ5'
 
-5> application:stop(fast). 
+5> 7> fix:conn(fix_read, Item), fix:table(order). 
 
-ok 
+MGR(<0.71.0>) -> FEC(<0.68.0>) getting TableId:24595 
 
-6> 
-
-=INFO REPORT==== 23-Aug-2015::14:54:01 === 
-
-    application: fast 
-    
-    exited: stopped 
-    
-    type: temporary 
-    
-q(). 
-
-ok 
+{ok,<0.70.0>} 
 
 *SecID = 77205831 - код фъючерса RIU5, при "правильном" декодировании равен 77205830, чтобы привести к нормальному виду добавлена 1.
 *Для подключения требуется установить соединение по specific source multicast.

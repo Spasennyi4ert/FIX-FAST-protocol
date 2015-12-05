@@ -7,7 +7,7 @@
 	      {mod, {fix_app, []}},
 	      {env, [
 	      	    {fix_read, [
-		      {host, "91.208.232.246"},
+		      {host, "91.208.232.244"},
 		      {port, 6001},
 		      {password, "12345"},
 		      {target, "FG"},

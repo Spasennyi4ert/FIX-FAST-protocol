@@ -43,7 +43,7 @@ start_link(Name, Instrument) ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [Name, Instrument], []).
 
 connect(Pid) ->
-    gen_server:call(Pid, connect_logon).
+    gen_server:cast(Pid, connect_logon).
 
 new_order_single(Pid, OrderId, Side, Quantaty, Options) ->
     NewOrder = [{transact_time, fix:now()}, {order_qty, Quantaty} | Options],
@@ -81,11 +81,6 @@ init([Name, Instrument]) ->
 	       fd = FD
 	      }}.
 
-handle_call(connect_logon, _From, #conn{} = Conn) ->
-    %?D (From),
-    Connected = #conn{} = do_connect(Conn),
-    Logon_sent = send_logon(Connected),
-    {noreply, Logon_sent, ?NETWORK_TIMEOUT};
 handle_call(logout, _From, #conn{} = Conn) ->
     send_logout(Conn),
     {reply, ok, Conn#conn{socket = closed}};
@@ -93,11 +88,11 @@ handle_call({msg, MessageType, ClOrdId, Side, Tail}, {_Owner, _Ref}, #conn{accou
     Body = fix:stock_to_instrument_block(Futures) ++ [{side, Side}, {cl_ord_id, ClOrdId}, {account, atom_to_binary(Account, latin1)}|Tail],
     {reply, ok, send(MessageType, Body, Conn)}.
 
-%handle_cast(reconnect_logon, #conn{} = Conn) ->
+handle_cast(reconnect_logon, #conn{} = Conn) ->
     %?D (From),
-%    Connected = #conn{} = do_connect(Conn),
-%    Logon_sent = send_logon(Connected),
-%    {noreply, Logon_sent};
+    Connected = #conn{} = do_connect(Conn),
+    Logon_sent = send_logon(Connected),
+    {noreply, Logon_sent};
 handle_cast(_Msg, State) ->
     {noreply, State}.
 

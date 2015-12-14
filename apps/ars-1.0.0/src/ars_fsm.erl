@@ -118,16 +118,18 @@ idle(_Event, S) ->
     {next_state, idle, S}.
 
 wait({buy, Price}, #state{pid_event=PidTo, count=Count} = S) ->
-    ?D({buy_at, Price}),
+    
     SendTo = whereis(fix_exec_conn),
     OrderQty = ?LIMIT,
+    ?D({buy_at, Price, OrderQty}),
     gen_event:notify(PidTo, {new_order_single, SendTo, Count, buy, OrderQty, [{ord_type,2},{price,Price}]}),
     {next_state, buying,
      S#state{pid_exec_conn=SendTo, count=Count+1, order_count=Count, order_qty=OrderQty, price=Price, side='buy', order_state = placed}};
 wait({sell, Price}, #state{pid_event=PidTo, count=Count} = S) ->
-    ?D({sell_at, Price}),
+    
     SendTo = whereis(fix_exec_conn),
     OrderQty = ?LIMIT,
+    ?D({sell_at, Price, OrderQty}),
     gen_event:notify(PidTo, {new_order_single, SendTo, Count, sell, OrderQty, [{ord_type,2},{price, Price}]}),
     {next_state, selling,
      S#state{pid_exec_conn=SendTo, count=Count+1, order_count=Count, order_qty=OrderQty, price=Price, side='sell', order_state = placed}};
@@ -144,13 +146,15 @@ buying(expired, #state{} = S) ->
     {next_state, partial_long, S#state{order_state = expired}};
 %    {next_state, buy_cash, S#state{order_state = expired}};
 buying({filled, Qty, Side}, #state{table_id = TableId} = S) ->
-    orders_book({filled, Qty, Side, TableId}),
-    ?D({filled, Qty, Side}),
-    {next_state, long, S#state{order_state = filled}};
+    NewState = S#state{order_state = filled},
+    orders_book({filled, Qty, Side, TableId, long, NewState}),
+    ?D({filled, Qty, Side, TableId});
+%    {next_state, long, S#state{order_state = filled}};
 buying({partial, Qty, Side}, #state{table_id = TableId} = S) ->
-    orders_book({partial, Qty, Side, TableId}),
-    ?D({partial, Qty, Side}),
-    {next_state, buying, S#state{order_state = partial, partial_qty = Qty}};
+    NewState = S#state{order_state = partial, partial_qty = Qty},
+    orders_book({partial, Qty, Side, TableId,  buying, NewState}),
+    ?D({partial, Qty, Side, TableId});
+%    {next_state, buying, S#state{order_state = partial, partial_qty = Qty}};
 buying({repeat_up, Price},
        #state{pid_exec_conn=SendTo, pid_event=PidTo, count=Count, order_count=Order_Count, order_qty=OrderQty, side = Side} = S) ->
     ?D({repeat_buy_at, Price}),
@@ -183,14 +187,19 @@ selling(rejected, #state{} = S) ->
 selling(expired, #state{} = S) ->
     {next_state, partial_short, S#state{order_state = expired}};
 %    {next_state, sell_cash, S#state{order_state = expired}};
+%selling({filled, Qty, Side}, #state{table_id = TableId} = S) ->
+%    orders_book({filled, Qty, Side, TableId}),
+%    ?D({filled, Qty, Side}),
+%    {next_state, short, S#state{order_state = filled}};
 selling({filled, Qty, Side}, #state{table_id = TableId} = S) ->
-    orders_book({filled, Qty, Side, TableId}),
-    ?D({filled, Qty, Side}),
-    {next_state, short, S#state{order_state = filled}};
+    NewState = S#state{order_state = filled},
+    orders_book({filled, Qty, Side, TableId, short, NewState}),
+    ?D({filled, Qty, Side, TableId});
 selling({partial, Qty, Side}, #state{table_id = TableId} = S) ->
-    orders_book({partial, Qty, Side, TableId}),
-    ?D({partial, Qty}),
-    {next_state, selling, S#state{order_state = partial, partial_qty = Qty}};
+    NewState = S#state{order_state = partial, partial_qty = Qty},
+    orders_book({partial, Qty, Side, TableId, selling, NewState}),
+    ?D({partial, Qty, TableId});
+%    {next_state, selling, S#state{order_state = partial, partial_qty = Qty}};
 selling({repeat_down, Price},
 	#state{pid_exec_conn = SendTo, pid_event = PidTo, count = Count, order_count = Order_Count, order_qty = OrderQty, side = Side} = S) ->
     ?D({repeat_sell_at, Price}),
@@ -700,7 +709,7 @@ closing(stop, S) ->
 closing(_E, S) ->
     {next_state, closing, S}.
 
-orders_book({OrdStatus, CQ, Side, TableId}) ->
+orders_book({OrdStatus, CQ, Side, TableId, Next_State, NewState}) ->
     Pos = case ets:lookup(TableId, pos) of
 	      [{_, Poss}] ->
 		  Poss;
@@ -776,7 +785,8 @@ orders_book({OrdStatus, CQ, Side, TableId}) ->
 	      end,		
     ?D(Partial),
     ets:insert(TableId, {rep, OrdStatus, CQ, Side}),
-    ets:insert(TableId, {pos, Partial}).
+    ets:insert(TableId, {pos, Partial}),
+    {next_state, Next_State, NewState}.
 
 check_orders(#state{pid_exec_conn = SendTo, pid_event = PidTo, count = Count, order_count = Order_Count,
 			order_qty = OrderQty, partial_qty = Qty, side = Side, order_state = Order_State}) ->

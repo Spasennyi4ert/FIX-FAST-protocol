@@ -668,9 +668,9 @@ handle_sync_event(Event, _From, StateName, State) ->
     io:format("Receives an unknown global sync event: ~p ~n", [Event]),
     {reply, "wait",  StateName, State}.
 
-handle_info({'ETS-TRANSFER', TableId, Pid, _Data}, StateName, Data) ->
+handle_info({'ETS-TRANSFER', TableId, Pid, _Data}, StateName, #state{} = Data) ->
     io:format("MGR(~p) -> FSM(~p) getting TableId: ~p~n", [Pid, self(), TableId]),
-    {next_state, StateName, Data};
+    {next_state, StateName, Data#state{table_id = TableId}};
 handle_info(_Info, StateName, Data) ->
     {next_state, StateName, Data}.
 

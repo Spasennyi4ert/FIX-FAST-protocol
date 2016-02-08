@@ -16,7 +16,9 @@
 	  side,
 	  order_state,
 	  state_name,
-	  table_id
+	  table_id,
+	  cncl_ord_side,
+	  cncl_qty
 }).
 
 %% public API
@@ -124,7 +126,6 @@ idle(_Event, S) ->
     {next_state, idle, S}.
 
 wait({buy, Price}, #state{pid_event=PidTo, count=Count} = S) ->
-    
     SendTo = whereis(fix_exec_conn),
     OrderQty = ?LIMIT,
     ?D({buy_at, Price, OrderQty}),
@@ -132,7 +133,6 @@ wait({buy, Price}, #state{pid_event=PidTo, count=Count} = S) ->
     {next_state, buying,
      S#state{pid_exec_conn=SendTo, count=Count+1, order_count=Count, order_qty=OrderQty, price=Price, side='buy', order_state = placed}};
 wait({sell, Price}, #state{pid_event=PidTo, count=Count} = S) ->
-    
     SendTo = whereis(fix_exec_conn),
     OrderQty = ?LIMIT,
     ?D({sell_at, Price, OrderQty}),
@@ -165,22 +165,25 @@ buying({repeat_up, Price},
        #state{pid_exec_conn=SendTo, pid_event=PidTo, count=Count, order_count=Order_Count, order_qty=OrderQty, side = Side} = S) ->
     ?D({repeat_buy_at, Price}),
     gen_event:notify(PidTo, {cancel_order, SendTo, Count, Order_Count, Side, OrderQty, [{ord_type,2}]}),
-    {next_state, canceled_buying, S#state{count = Count + 1, price = Price, order_state = canceled}};
+    {next_state, canceled_buying, S#state{count = Count + 1, price = Price, 
+					  order_state = canceled, cncl_ord_side = Side, cncl_qty = OrderQty}};
 buying({sell, Price},
        #state{pid_exec_conn = SendTo, pid_event = PidTo, count = Count, order_count = Order_Count, order_qty = OrderQty, side = Side} = S) ->
     ?D({double_sell_at, Price, from_partial}),
     gen_event:notify(PidTo, {cancel_order, SendTo, Count, Order_Count, Side, OrderQty, [{ord_type,2}]}),
-    {next_state, canceled_selling, S#state{count = Count + 1, price = Price, side = 'sell', order_state = canceled}};
+    {next_state, canceled_selling, S#state{count = Count + 1, price = Price, 
+					   side = 'sell', order_state = canceled, cncl_ord_side = Side, cncl_qty = OrderQty}};
 buying(ready_to_sell,
        #state{pid_exec_conn = SendTo, pid_event = PidTo, count = Count, order_count = Order_Count, order_qty = OrderQty, side = Side} = S) ->
     ?D(ready_to_sell_from_partial),
     gen_event:notify(PidTo, {cancel_order, SendTo, Count, Order_Count, Side, OrderQty, [{ord_type,2}]}),
-    {next_state, ready_sell, S#state{count = Count + 1, order_state = canceled}};
+    {next_state, ready_sell, S#state{count = Count + 1, order_state = canceled, cncl_ord_side = Side, cncl_qty = OrderQty}};
 buying({market_buy, Price},
        #state{pid_exec_conn = SendTo, pid_event = PidTo, count = Count, order_count = Order_Count, order_qty = OrderQty, side = Side} = S) ->
     ?D({market_sell_at, Price}),
     gen_event:notify(PidTo, {cancel_order, SendTo, Count, Order_Count, Side, OrderQty, [{ord_type,2}]}),
-    {next_state, canceled_to_market_buying, S#state{count = Count + 1, price = Price, order_state = canceled}};
+    {next_state, canceled_to_market_buying, S#state{count = Count + 1, price = Price, 
+						    order_state = canceled, cncl_ord_side = Side, cncl_qty = OrderQty}};
 buying(break_conn, #state{} = S) ->
     {next_state, idle, S#state{state_name = buying}};
 buying(_E, S) ->
@@ -207,22 +210,25 @@ selling({repeat_down, Price},
 	#state{pid_exec_conn = SendTo, pid_event = PidTo, count = Count, order_count = Order_Count, order_qty = OrderQty, side = Side} = S) ->
     ?D({repeat_sell_at, Price}),
     gen_event:notify(PidTo, {cancel_order, SendTo, Count, Order_Count, Side, OrderQty, [{ord_type,2}]}),
-    {next_state, canceled_selling, S#state{count = Count + 1, price = Price, order_state = canceled}};
+    {next_state, canceled_selling, S#state{count = Count + 1, price = Price, 
+					   order_state = canceled, cncl_ord_side = Side, cncl_qty = OrderQty}};
 selling({buy, Price},
 	#state{pid_exec_conn = SendTo, pid_event = PidTo, count = Count, order_count = Order_Count, order_qty = OrderQty, side = Side} = S) ->
     ?D({buy_at, Price, from_partial}),
     gen_event:notify(PidTo, {cancel_order, SendTo, Count, Order_Count, Side, OrderQty, [{ord_type,2}]}),
-    {next_state, canceled_buying, S#state{count = Count + 1, price = Price, side = 'buy', order_state = canceled}};
+    {next_state, canceled_buying, S#state{count = Count + 1, price = Price, 
+					  side = 'buy', order_state = canceled, cncl_ord_side = Side, cncl_qty = OrderQty}};
 selling(ready_to_buy,
 	#state{pid_exec_conn = SendTo, pid_event = PidTo, count = Count, order_count = Order_Count, order_qty = OrderQty, side = Side} = S) ->
     ?D(ready_to_buy_from_partial),
     gen_event:notify(PidTo, {cancel_order, SendTo, Count, Order_Count, Side, OrderQty, [{ord_type,2}]}),
-    {next_state, ready_buy, S#state{count = Count + 1}};
+    {next_state, ready_buy, S#state{count = Count + 1, cncl_ord_side = Side, cncl_qty = OrderQty}};
 selling({market_sell, Price},
        #state{pid_exec_conn = SendTo, pid_event = PidTo, count = Count, order_count = Order_Count, order_qty = OrderQty, side = Side} = S) ->
     ?D({market_sell_at, Price}),
     gen_event:notify(PidTo, {cancel_order, SendTo, Count, Order_Count, Side, OrderQty, [{ord_type,2}]}),
-    {next_state, canceled_to_market_selling, S#state{count = Count + 1, price = Price, order_state = canceled}};
+    {next_state, canceled_to_market_selling, S#state{count = Count + 1, price = Price, 
+						     order_state = canceled, cncl_ord_side = Side, cncl_qty = OrderQty}};
 selling(break_conn, #state{} = S) ->
     {next_state, idle, S#state{state_name = selling}};
 selling(_E, S) ->
@@ -248,7 +254,7 @@ canceled_buying({canceled, Qty, Order_Side}, #state{pid_exec_conn = SendTo, pid_
 	    {next_state, long, S}
     end;
 canceled_buying(executed, #state{pid_exec_conn = SendTo, pid_event = PidTo, count = Count,
-				 price = Price, side = Side, table_id = TableId} = S) ->
+				 price = Price, side = Side, table_id = TableId, cncl_ord_side = Cncl_Side, cncl_qty = Cncl_Qty} = S) ->
     ?D(executed_buying_limit),
     Pos = case ets:lookup(TableId, pos) of
 	      [{_, Poss}] ->
@@ -260,12 +266,14 @@ canceled_buying(executed, #state{pid_exec_conn = SendTo, pid_event = PidTo, coun
     if Pos < ?LIMIT ->
 	    OrderQty = ?LIMIT - Pos,
 	    gen_event:notify(PidTo, {new_order_single, SendTo, Count, Side, OrderQty, [{ord_type,2},{price, Price}]}),
+	    orders_book({executed, Cncl_Qty, Cncl_Side, TableId}),
 	    {next_state, buying, S#state{count = Count + 1, order_count = Count, order_qty = OrderQty, order_state = placed}};
        Pos >= ?LIMIT ->
+	    orders_book({executed, Cncl_Qty, Cncl_Side, TableId}),
 	    {next_state, long, S}
     end;
 canceled_buying(replaced, #state{pid_exec_conn = SendTo, pid_event = PidTo, count = Count,
-				 price = Price, side = Side, table_id = TableId} = S) ->
+				 price = Price, side = Side, table_id = TableId, cncl_ord_side = Cncl_Side, cncl_qty = Cncl_Qty} = S) ->
     ?D(replaced_buying_limit),
     Pos = case ets:lookup(TableId, pos) of
 	      [{_, Poss}] ->
@@ -277,12 +285,14 @@ canceled_buying(replaced, #state{pid_exec_conn = SendTo, pid_event = PidTo, coun
     if Pos < ?LIMIT ->
 	    OrderQty = ?LIMIT - Pos,
 	    gen_event:notify(PidTo, {new_order_single, SendTo, Count, Side, OrderQty, [{ord_type,2},{price, Price}]}),
+	    orders_book({replaced, Cncl_Qty, Cncl_Side, TableId}),
 	    {next_state, buying, S#state{count = Count + 1, order_count = Count, order_qty = OrderQty, order_state = placed}};
        Pos >= ?LIMIT ->
+	    orders_book({replaced, Cncl_Qty, Cncl_Side, TableId}),
 	    {next_state, long, S}
     end;
 canceled_buying(unknown, #state{pid_exec_conn = SendTo, pid_event = PidTo, count = Count,
-				price = Price, side = Side, table_id = TableId} = S) ->
+				price = Price, side = Side, table_id = TableId, cncl_ord_side = Cncl_Side, cncl_qty = Cncl_Qty} = S) ->
     ?D(not_found_buying_limit),
     Pos = case ets:lookup(TableId, pos) of
 	      [{_, Poss}] ->
@@ -294,12 +304,14 @@ canceled_buying(unknown, #state{pid_exec_conn = SendTo, pid_event = PidTo, count
     if Pos < ?LIMIT ->
 	    OrderQty = ?LIMIT - Pos,
 	    gen_event:notify(PidTo, {new_order_single,SendTo,Count, Side, OrderQty, [{ord_type,2},{price, Price}]}),
+	    orders_book({unknown, Cncl_Qty, Cncl_Side, TableId}),
 	    {next_state, buying, S#state{count = Count + 1, order_count = Count, order_qty = OrderQty, order_state = placed}};
        Pos >= ?LIMIT ->
+	    orders_book({unknown, Cncl_Qty, Cncl_Side, TableId}),
 	    {next_state, long, S}
     end;
 canceled_buying(other, #state{pid_exec_conn = SendTo, pid_event = PidTo, count = Count,
-			      price = Price, side = Side, table_id = TableId} = S) ->
+			      price = Price, side = Side, table_id = TableId, cncl_ord_side = Cncl_Side, cncl_qty = Cncl_Qty} = S) ->
     ?D(other_reason_buying_limit),
     Pos = case ets:lookup(TableId, pos) of
 	      [{_, Poss}] ->
@@ -311,8 +323,10 @@ canceled_buying(other, #state{pid_exec_conn = SendTo, pid_event = PidTo, count =
     if Pos < ?LIMIT ->
 	    OrderQty = ?LIMIT - Pos,
 	    gen_event:notify(PidTo, {new_order_single,SendTo,Count, Side, OrderQty, [{ord_type,2},{price, Price}]}),
+	    orders_book({other, Cncl_Qty, Cncl_Side, TableId}),
 	    {next_state, buying, S#state{count = Count + 1, order_count = Count, order_qty = OrderQty, order_state = placed}};
        Pos >= ?LIMIT ->
+	    orders_book({other, Cncl_Qty, Cncl_Side, TableId}),
 	    {next_state, long, S}
     end;
 canceled_buying(break_conn, #state{} = S) ->
@@ -340,7 +354,7 @@ canceled_selling({canceled, Qty, Order_Side}, #state{pid_exec_conn = SendTo, pid
 	    {next_state, short, S}
     end;
 canceled_selling(executed, #state{pid_exec_conn = SendTo, pid_event = PidTo, count = Count,
-				  price = Price, side = Side, table_id = TableId} = S) ->
+				  price = Price, side = Side, table_id = TableId, cncl_ord_side = Cncl_Side, cncl_qty = Cncl_Qty} = S) ->
     ?D(executed_selling_limit),
     Pos = case ets:lookup(TableId, pos) of
 	      [{_, Poss}] ->
@@ -352,12 +366,14 @@ canceled_selling(executed, #state{pid_exec_conn = SendTo, pid_event = PidTo, cou
     if Pos > -?LIMIT ->
 	    OrderQty = ?LIMIT + Pos,
 	    gen_event:notify(PidTo,{new_order_single, SendTo, Count, Side, OrderQty, [{ord_type,2},{price, Price}]}),
+	    orders_book({executed, Cncl_Qty, Cncl_Side, TableId}),
 	    {next_state, selling, S#state{count = Count + 1, order_count = Count, order_qty = OrderQty, order_state = placed}};
        Pos =< -?LIMIT ->
+	    orders_book({executed, Cncl_Qty, Cncl_Side, TableId}),
 	    {next_state, short, S}
     end;
 canceled_selling(replaced, #state{pid_exec_conn = SendTo, pid_event = PidTo, count = Count,
-				  price = Price, side = Side, table_id = TableId} = S) ->
+				  price = Price, side = Side, table_id = TableId, cncl_ord_side = Cncl_Side, cncl_qty = Cncl_Qty} = S) ->
     ?D(replaced_selling_limit),
     Pos = case ets:lookup(TableId, pos) of
 	      [{_, Poss}] ->
@@ -369,12 +385,14 @@ canceled_selling(replaced, #state{pid_exec_conn = SendTo, pid_event = PidTo, cou
     if Pos > -?LIMIT ->
 	    OrderQty = ?LIMIT + Pos,
 	    gen_event:notify(PidTo,{new_order_single, SendTo, Count, Side, OrderQty, [{ord_type,2},{price, Price}]}),
+	    orders_book({replaced, Cncl_Qty, Cncl_Side, TableId}),
 	    {next_state, selling, S#state{count = Count + 1, order_count = Count, order_qty = OrderQty, order_state = placed}};
        Pos =< -?LIMIT ->
+	    orders_book({replaced, Cncl_Qty, Cncl_Side, TableId}),
 	    {next_state, short, S}
     end;
 canceled_selling(unknown, #state{pid_exec_conn = SendTo, pid_event = PidTo, count = Count,
-				 price = Price, side = Side, table_id = TableId} = S) ->
+				 price = Price, side = Side, table_id = TableId, cncl_ord_side = Cncl_Side, cncl_qty = Cncl_Qty} = S) ->
     ?D(not_found_selling_limit),
     Pos = case ets:lookup(TableId, pos) of
 	      [{_, Poss}] ->
@@ -386,12 +404,14 @@ canceled_selling(unknown, #state{pid_exec_conn = SendTo, pid_event = PidTo, coun
     if Pos > -?LIMIT ->
 	    OrderQty = ?LIMIT + Pos,
 	    gen_event:notify(PidTo,{new_order_single, SendTo, Count, Side, OrderQty, [{ord_type,2},{price, Price}]}),
+	    orders_book({unknown, Cncl_Qty, Cncl_Side, TableId}),
 	    {next_state, selling, S#state{count = Count + 1, order_count = Count, order_qty = OrderQty, order_state = placed}};
        Pos =< -?LIMIT ->
+	    orders_book({unknown, Cncl_Qty, Cncl_Side, TableId}),
 	    {next_state, short, S}
     end;
 canceled_selling(other, #state{pid_exec_conn = SendTo, pid_event = PidTo, count = Count,
-			       price = Price, side = Side, table_id = TableId} = S) ->
+			       price = Price, side = Side, table_id = TableId, cncl_ord_side = Cncl_Side, cncl_qty = Cncl_Qty} = S) ->
     ?D(other_reason_selling_limit),
     Pos = case ets:lookup(TableId, pos) of
 	      [{_, Poss}] ->
@@ -403,8 +423,10 @@ canceled_selling(other, #state{pid_exec_conn = SendTo, pid_event = PidTo, count 
     if Pos > -?LIMIT ->
 	    OrderQty = ?LIMIT + Pos,
 	    gen_event:notify(PidTo,{new_order_single, SendTo, Count, Side, OrderQty, [{ord_type,2},{price, Price}]}),
+	    orders_book({other, Cncl_Qty, Cncl_Side, TableId}),
 	    {next_state, selling, S#state{count = Count + 1, order_count = Count, order_qty = OrderQty, order_state = placed}};
        Pos =< -?LIMIT ->
+	    orders_book({other, Cncl_Qty, Cncl_Side, TableId}),
 	    {next_state, short, S}
     end;
 canceled_selling(break_conn, #state{} = S) ->
@@ -620,6 +642,82 @@ canceled_to_market_buying({canceled, Qty, Order_Side}, #state{pid_exec_conn = Se
 	    orders_book({canceled, Qty, Order_Side, TableId}),
 	    {next_state, buy_cash, S}
     end;
+canceled_to_market_buying(executed, #state{pid_exec_conn = SendTo, pid_event = PidTo, count = Count,
+					   price = Price, table_id = TableId, cncl_ord_side = Cncl_Side, cncl_qty = Cncl_Qty} = S) ->
+    ?D(canceled_buying_limit),
+    Pos = case ets:lookup(TableId, pos) of
+	      [{_, Poss}] ->
+		  Poss;
+	      _ ->
+		  0
+	  end,
+    if Pos < 0 ->
+	    OrderQty = -1 * Pos,
+	    gen_event:notify(PidTo, {new_order_single, SendTo, Count, buy, OrderQty, [{ord_type,2},{price, Price}]}),
+	    orders_book({executed, Cncl_Qty, Cncl_Side, TableId}),
+	    {next_state, buy_market,
+	     S#state{count = Count + 1, order_count = Count, order_qty = OrderQty, side = 'buy', order_state = placed}};
+       true ->
+	    orders_book({executed, Cncl_Qty, Cncl_Side, TableId}),
+	    {next_state, buy_cash, S}
+    end;
+canceled_to_market_buying(replaced, #state{pid_exec_conn = SendTo, pid_event = PidTo, count = Count,
+					   price = Price, table_id = TableId, cncl_ord_side = Cncl_Side, cncl_qty = Cncl_Qty} = S) ->
+    ?D(canceled_buying_limit),
+    Pos = case ets:lookup(TableId, pos) of
+	      [{_, Poss}] ->
+		  Poss;
+	      _ ->
+		  0
+	  end,
+    if Pos < 0 ->
+	    OrderQty = -1 * Pos,
+	    gen_event:notify(PidTo, {new_order_single, SendTo, Count, buy, OrderQty, [{ord_type,2},{price, Price}]}),
+	    orders_book({replaced, Cncl_Qty, Cncl_Side, TableId}),
+	    {next_state, buy_market,
+	     S#state{count = Count + 1, order_count = Count, order_qty = OrderQty, side = 'buy', order_state = placed}};
+       true ->
+	    orders_book({replaced, Cncl_Qty, Cncl_Side, TableId}),
+	    {next_state, buy_cash, S}
+    end;
+canceled_to_market_buying(unknown, #state{pid_exec_conn = SendTo, pid_event = PidTo, count = Count,
+					   price = Price, table_id = TableId, cncl_ord_side = Cncl_Side, cncl_qty = Cncl_Qty} = S) ->
+    ?D(canceled_buying_limit),
+    Pos = case ets:lookup(TableId, pos) of
+	      [{_, Poss}] ->
+		  Poss;
+	      _ ->
+		  0
+	  end,
+    if Pos < 0 ->
+	    OrderQty = -1 * Pos,
+	    gen_event:notify(PidTo, {new_order_single, SendTo, Count, buy, OrderQty, [{ord_type,2},{price, Price}]}),
+	    orders_book({unknown, Cncl_Qty, Cncl_Side, TableId}),
+	    {next_state, buy_market,
+	     S#state{count = Count + 1, order_count = Count, order_qty = OrderQty, side = 'buy', order_state = placed}};
+       true ->
+	    orders_book({unknown, Cncl_Qty, Cncl_Side, TableId}),
+	    {next_state, buy_cash, S}
+    end;
+canceled_to_market_buying(other, #state{pid_exec_conn = SendTo, pid_event = PidTo, count = Count,
+					   price = Price, table_id = TableId, cncl_ord_side = Cncl_Side, cncl_qty = Cncl_Qty} = S) ->
+    ?D(canceled_buying_limit),
+    Pos = case ets:lookup(TableId, pos) of
+	      [{_, Poss}] ->
+		  Poss;
+	      _ ->
+		  0
+	  end,
+    if Pos < 0 ->
+	    OrderQty = -1 * Pos,
+	    gen_event:notify(PidTo, {new_order_single, SendTo, Count, buy, OrderQty, [{ord_type,2},{price, Price}]}),
+	    orders_book({other, Cncl_Qty, Cncl_Side, TableId}),
+	    {next_state, buy_market,
+	     S#state{count = Count + 1, order_count = Count, order_qty = OrderQty, side = 'buy', order_state = placed}};
+       true ->
+	    orders_book({other, Cncl_Qty, Cncl_Side, TableId}),
+	    {next_state, buy_cash, S}
+    end;
 canceled_to_market_buying(break_conn, #state{} = S) ->
     {next_state, idle, S#state{state_name = canceled_to_market_buying}};
 canceled_to_market_buying(_E, S) ->
@@ -642,6 +740,82 @@ canceled_to_market_selling({canceled, Qty, Order_Side}, #state{pid_exec_conn = S
 	     S#state{count = Count + 1, order_count = Count, order_qty = OrderQty, side = 'sell', order_state = placed}};
        true ->
 	    orders_book({canceled, Qty, Order_Side, TableId}),
+	    {next_state, sell_cash, S}
+    end;
+canceled_to_market_selling(executed, #state{pid_exec_conn = SendTo, pid_event = PidTo, count = Count,
+					    price = Price, table_id = TableId, cncl_ord_side = Cncl_Side, cncl_qty = Cncl_Qty} = S) ->
+    ?D(canceled_selling_limit_short),
+    Pos = case ets:lookup(TableId, pos) of
+	      [{_, Poss}] ->
+		  Poss;
+	      _ ->
+		  0
+	  end,
+    if Pos > 0 ->
+	    OrderQty = Pos,
+	    gen_event:notify(PidTo, {new_order_single, SendTo, Count, sell, OrderQty, [{ord_type,2},{price, Price}]}),
+	    orders_book({executed, Cncl_Qty, Cncl_Side, TableId}),
+	    {next_state, sell_market,
+	     S#state{count = Count + 1, order_count = Count, order_qty = OrderQty, side = 'sell', order_state = placed}};
+       true ->
+	    orders_book({executed, Cncl_Qty, Cncl_Side, TableId}),
+	    {next_state, sell_cash, S}
+    end;
+canceled_to_market_selling(replaced, #state{pid_exec_conn = SendTo, pid_event = PidTo, count = Count,
+					    price = Price, table_id = TableId, cncl_ord_side = Cncl_Side, cncl_qty = Cncl_Qty} = S) ->
+    ?D(canceled_selling_limit_short),
+    Pos = case ets:lookup(TableId, pos) of
+	      [{_, Poss}] ->
+		  Poss;
+	      _ ->
+		  0
+	  end,
+    if Pos > 0 ->
+	    OrderQty = Pos,
+	    gen_event:notify(PidTo, {new_order_single, SendTo, Count, sell, OrderQty, [{ord_type,2},{price, Price}]}),
+	    orders_book({replaced, Cncl_Qty, Cncl_Side, TableId}),
+	    {next_state, sell_market,
+	     S#state{count = Count + 1, order_count = Count, order_qty = OrderQty, side = 'sell', order_state = placed}};
+       true ->
+	    orders_book({replaced, Cncl_Qty, Cncl_Side, TableId}),
+	    {next_state, sell_cash, S}
+    end;
+canceled_to_market_selling(unknown, #state{pid_exec_conn = SendTo, pid_event = PidTo, count = Count,
+					    price = Price, table_id = TableId, cncl_ord_side = Cncl_Side, cncl_qty = Cncl_Qty} = S) ->
+    ?D(canceled_selling_limit_short),
+    Pos = case ets:lookup(TableId, pos) of
+	      [{_, Poss}] ->
+		  Poss;
+	      _ ->
+		  0
+	  end,
+    if Pos > 0 ->
+	    OrderQty = Pos,
+	    gen_event:notify(PidTo, {new_order_single, SendTo, Count, sell, OrderQty, [{ord_type,2},{price, Price}]}),
+	    orders_book({unknown, Cncl_Qty, Cncl_Side, TableId}),
+	    {next_state, sell_market,
+	     S#state{count = Count + 1, order_count = Count, order_qty = OrderQty, side = 'sell', order_state = placed}};
+       true ->
+	    orders_book({unknown, Cncl_Qty, Cncl_Side, TableId}),
+	    {next_state, sell_cash, S}
+    end;
+canceled_to_market_selling(other, #state{pid_exec_conn = SendTo, pid_event = PidTo, count = Count,
+					    price = Price, table_id = TableId, cncl_ord_side = Cncl_Side, cncl_qty = Cncl_Qty} = S) ->
+    ?D(canceled_selling_limit_short),
+    Pos = case ets:lookup(TableId, pos) of
+	      [{_, Poss}] ->
+		  Poss;
+	      _ ->
+		  0
+	  end,
+    if Pos > 0 ->
+	    OrderQty = Pos,
+	    gen_event:notify(PidTo, {new_order_single, SendTo, Count, sell, OrderQty, [{ord_type,2},{price, Price}]}),
+	    orders_book({other, Cncl_Qty, Cncl_Side, TableId}),
+	    {next_state, sell_market,
+	     S#state{count = Count + 1, order_count = Count, order_qty = OrderQty, side = 'sell', order_state = placed}};
+       true ->
+	    orders_book({other, Cncl_Qty, Cncl_Side, TableId}),
 	    {next_state, sell_cash, S}
     end;
 canceled_to_market_selling(break_conn, #state{} = S) ->
@@ -828,14 +1002,6 @@ orders_book({OrdStatus, CQ, Side, TableId}) ->
     ets:insert(TableId, {rep, OrdStatus, CQ, Side}),
     ets:insert(TableId, {pos, Partial}).
 
-position(TableId) ->
-   case ets:lookup(TableId, pos) of
-	[{_, Poss}] ->
-		  Poss;
-	_ ->
-		  0
-   end.
-
 check_orders(#state{pid_exec_conn = SendTo, pid_event = PidTo, count = Count, order_count = Order_Count,
 			order_qty = OrderQty, partial_qty = Qty, side = Side, order_state = Order_State}) ->
     case Order_State of
@@ -869,4 +1035,10 @@ check_positions(#state{pid_exec_conn = SendTo, pid_event = PidTo, count = Count,
 	    ok
     end.
 
-    
+position(TableId) ->
+   case ets:lookup(TableId, pos) of
+	[{_, Poss}] ->
+		  Poss;
+	_ ->
+		  0
+   end.

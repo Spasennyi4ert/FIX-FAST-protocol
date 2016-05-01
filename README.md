@@ -3,15 +3,19 @@
 запускаем терминал source:
 
 s5@s5:~/source/source-1.0.0$ erl -pa ebin/ -sname feeda 
+
 Erlang/OTP 18 [erts-7.2] [source] [64-bit] [smp:8:8] [async-threads:10] [kernel-poll:false] 
 
-Eshell V7.2  (abort with ^G) 
+Eshell V7.2  (abort with ^G)
+
 (feeda@s5)1> SecID = 91567431.
 
 91567431
 
 Запускаем терминал server:
+
 s5@s5:~/ars/apps$ erl -env ERL_LIBS "." -sname server 
+
 Erlang/OTP 18 [erts-7.2] [source] [64-bit] [smp:8:8] [async-threads:10] [kernel-poll:false] 
 
 Eshell V7.2  (abort with ^G) 

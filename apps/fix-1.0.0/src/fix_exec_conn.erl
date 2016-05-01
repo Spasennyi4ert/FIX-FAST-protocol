@@ -81,6 +81,11 @@ init([Name, Instrument]) ->
 	       fd = FD
 	      }}.
 
+%handle_call(connect_logon, _From, #conn{} = Conn) ->
+    %?D (From),
+%    Connected = #conn{} = do_connect(Conn),
+%    Logon_sent = send_logon(Connected),
+%    {noreply, Logon_sent, ?NETWORK_TIMEOUT};
 handle_call(logout, _From, #conn{} = Conn) ->
     send_logout(Conn),
     {reply, ok, Conn#conn{socket = closed}};
@@ -88,7 +93,7 @@ handle_call({msg, MessageType, ClOrdId, Side, Tail}, {_Owner, _Ref}, #conn{accou
     Body = fix:stock_to_instrument_block(Futures) ++ [{side, Side}, {cl_ord_id, ClOrdId}, {account, atom_to_binary(Account, latin1)}|Tail],
     {reply, ok, send(MessageType, Body, Conn)}.
 
-handle_cast(reconnect_logon, #conn{} = Conn) ->
+handle_cast(connect_logon, #conn{} = Conn) ->
     %?D (From),
     Connected = #conn{} = do_connect(Conn),
     Logon_sent = send_logon(Connected),
@@ -101,7 +106,7 @@ handle_info(heartbeat, #conn{} = Conn) ->
    {noreply, send(heartbeat, [], Conn)};
 handle_info({check, Check_Num}, #conn{heartbeatnum = Heartbeat, seq_test_req = Seq_Test_Req, socket = Socket, send_to = SendTo} = Conn) ->
     if Check_Num =< Heartbeat ->
-	    ?D({Check_Num, Heartbeat}),
+%	    ?D({Check_Num, Heartbeat}),
 	    {noreply, Conn};
 	true ->
 	    case Seq_Test_Req of
@@ -127,7 +132,7 @@ handle_info({tcp, Socket, Bin}, #conn{buffer = PreBuffer} = Conn) ->
 				  {Msgs, Conn#conn{buffer = Rest}}
 			  end,
     inet:setopts(Socket, [{active, once}]),
-    ?D(Messages),
+    %?D(Messages),
     handle_messages(Messages, NewConn);
 handle_info(reconnect, #conn{} = Conn) ->
     gen_server:call(self(), connect_logon),
@@ -181,8 +186,8 @@ send(MessageType, Body, #conn{table_id = TableId, sender = Sender, target = Targ
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
-terminate(_Msg, #conn{check = Check, fd = FD}) ->
-    erlang:cancel_timer(Check),
+terminate(_Msg, #conn{fd = FD}) ->
+%    erlang:cancel_timer(Check),
     file:close(FD),
     ok.
 
@@ -214,7 +219,7 @@ handle_messages([{#logon{msg_seq_num = Num},_}|Messages], #conn{table_id = Table
 	       [{ _, Prev_Num}] ->
 		   Prev_Num + 1;
 	       _ ->
-		   1
+		  1
 	   end,
     case Num of
 	Prev ->
@@ -238,23 +243,24 @@ handle_messages([{#logout{text = Text}, _Bin}|Messages], #conn{logon_from = {_, 
     ?D(Text),
     gen_server:reply(From, ok),
     handle_messages(Messages, Conn);
-handle_messages([{#execution_report{msg_seq_num = Num, ord_status = Status, cum_qty = CQ, side = Side, price = Price}, _Bin}|Messages],
-		#conn{send_to = SendTo, table_id = TableId, fd = FD} = Conn) ->
+handle_messages([{#execution_report{msg_seq_num = Num, ord_status = Status, cum_qty = CQ, order_qty = OQ, side = Side, last_px = Price, text = Text}, 
+	_Bin}|	Messages], #conn{send_to = SendTo, table_id = TableId, fd = FD} = Conn) ->
     ets:insert(TableId, {prev, Num}),
     Check_Num = Num + 1,
     Check = erlang:send_after(31000, self(), {check, Check_Num}),
     
-    ?D({execution_report, Status, CQ, Side, SendTo}),
+    ?D({execution_report, Status, CQ, OQ, Side, SendTo, Text}),
 %	?D(fix:dump(Bin)),
     case Status of
 	partial ->
 	    ars_fsm:partial(SendTo, CQ, Side),
 	    file:write(FD,io_lib:format("Status: ~p Side: ~p Quant: ~p Price: ~p\~n", [Status, Side, CQ, Price]));
 	filled ->
-	    ars_fsm:filled(SendTo, CQ, Side);
+	    ars_fsm:filled(SendTo, CQ, Side),
+	    file:write(FD,io_lib:format("Status: ~p Side: ~p Quant: ~p Price: ~p\~n", [Status, Side, CQ, Price]));
 %	    ars_fsm:orders_book({Status, LQ, CQ, Side});
 	canceled ->
-	    ars_fsm:canceled(SendTo);
+	    ars_fsm:canceled(SendTo, CQ, Side);
 %	    ars_fsm:orders_book({Status, LQ, CQ, Side});
 	rejected ->
 	    ars_fsm:rejected(SendTo);
@@ -273,13 +279,13 @@ handle_messages([{#order_cancel_reject{msg_seq_num = Num, cxl_rej_reason = Cxl_R
 %    ?D(Cxl_Rej_Reason),
     case Cxl_Rej_Reason of
 	0 ->
-	    ars_fsm:executed(SendTo),
+	    ars_fsm:executed(SendTo),% Отмена запоздала, заявка исполнена
 	    ?D(Cxl_Rej_Reason);
 	1 ->
-	    ars_fsm:unknown(SendTo),
+	    ars_fsm:unknown(SendTo),% Заявка не найдена
 	    ?D(Cxl_Rej_Reason);
 	3 ->
-	    ars_fsm:replaced(SendTo),
+	    ars_fsm:replaced(SendTo),% Заявка находится в процессе отмены или изменения
 	    ?D(Cxl_Rej_Reason);
 	_ ->
 	    ars_fsm:other(SendTo),

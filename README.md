@@ -1,6 +1,6 @@
 Робот для торговли на MOEX в секции FORTS, с подключением по FAST и FIX протоколам.
-Пробный запуск следующий:
-Запускаем терминал source:
+Пробный запуск следующий -
+запускаем терминал source:
 
 s5@s5:~/source/source-1.0.0$ erl -pa ebin/ -sname feeda 
 Erlang/OTP 18 [erts-7.2] [source] [64-bit] [smp:8:8] [async-threads:10] [kernel-poll:false] 

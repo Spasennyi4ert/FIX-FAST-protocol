@@ -1,3 +1,4 @@
+
 -module(fast_dispatcher).
 -behaviour(gen_server).
 
@@ -9,13 +10,15 @@
 	  count_dup = 1
 }).
 
+-define(SERVER, global:whereis_name(?MODULE)).
+
 -export([start_link/2, feed/1, handle_call/3, handle_cast/2, handle_info/2, code_change/3, terminate/2, init/1]).
 
 start_link(Type, Item) ->
-    gen_server:start_link({local, ?MODULE}, ?MODULE, [Type, Item], []).
+    gen_server:start_link({global, ?MODULE}, ?MODULE, [Type, Item], []).
 
 feed(Msg) ->
-    gen_server:cast(?MODULE, {feed, Msg}).
+    gen_server:cast(?SERVER, {feed, Msg}).
 
 init([Type, Item]) ->
     Tid = ets:new(Type, [ordered_set, public]),
@@ -73,7 +76,7 @@ processed({Rpt, Act, Type, Exp, Mant}, S = #state{table = Tid, seq = Seq, count 
 price(Exp, Mant) ->
     Price = case Exp of
 		123 ->
-		    Mant * math:pow(10, -5);
+		    float(round(Mant * math:pow(10, -5)));
 		_ ->
 		    ok
 	    end,

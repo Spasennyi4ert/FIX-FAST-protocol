@@ -9,11 +9,11 @@
 	      	    {fix_read, [
 		      {host, "91.208.232.244"},
 		      {port, 6001},
-		      {password, "12345"},
+		      {password, "XXXXX"},
 		      {target, "FG"},
-		      {sender, "tgFZcmx200A80"},
+		      {sender, "XXXXXXXXXXXXX"},
 		      {heartbeat, 30},
-		      {account, 'A80'}
+		      {account, 'XXX'}
 		      ]}
 	      ]}
 ]}.
